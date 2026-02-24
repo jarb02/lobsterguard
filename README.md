@@ -1,51 +1,53 @@
 # LobsterGuard v6.0 — Security Auditor for OpenClaw
 
-Plugin de seguridad para OpenClaw controlable desde Telegram. Escanea, detecta y corrige problemas de seguridad en tu servidor.
+> **[Leer en Español](README.es.md)**
 
-## Qué hace
+Security plugin for OpenClaw controllable from Telegram. Scans, detects and fixes security issues on your server.
 
-- **70 checks de seguridad** en 6 categorías
-- **12 auto-fixes** ejecutables desde Telegram
-- **Scanner de skills** con 4 capas de análisis
-- **Quarantine watcher** que vigila skills sospechosas 24/7
-- **Auto-scan cada 6 horas** con alertas por Telegram
-- **31 patrones de amenazas** en tiempo real
+## What it does
 
-## Categorías de Checks
+- **70 security checks** across 6 categories
+- **12 auto-fixes** executable from Telegram
+- **Skill scanner** with 4-layer deep analysis
+- **Quarantine watcher** monitors suspicious skills 24/7
+- **Auto-scan every 6 hours** with Telegram alerts
+- **31 real-time threat patterns**
 
-| Categoría | Checks | Qué revisa |
-|-----------|--------|------------|
-| OpenClaw | 5 | Gateway, autenticación, versión, credenciales, skills |
-| Servidor | 10 | SSH, firewall, fail2ban, puertos, docker, disco |
-| Avanzado | 13 | Permisos, SSL, backups, supply chain, CORS, sandbox |
-| IA Agental | 22 | Prompt injection, exfiltración, MCP, typosquatting, memoria |
-| Forense | 7 | Rootkits, reverse shells, cryptominers, DNS tunneling |
-| Endurecimiento | 13 | Kernel, systemd, auditd, core dumps, swap, namespaces |
+## Check Categories
 
-## Comandos de Telegram
+| Category | Checks | What it reviews |
+|----------|--------|-----------------|
+| OpenClaw | 5 | Gateway, authentication, version, credentials, skills |
+| Server | 10 | SSH, firewall, fail2ban, ports, docker, disk |
+| Advanced | 13 | Permissions, SSL, backups, supply chain, CORS, sandbox |
+| Agentic AI | 22 | Prompt injection, exfiltration, MCP, typosquatting, memory |
+| Forensic | 7 | Rootkits, reverse shells, cryptominers, DNS tunneling |
+| Hardening | 13 | Kernel, systemd, auditd, core dumps, swap, namespaces |
 
-### Escaneo
-- `/scan` — Escaneo completo con score 0-100
-- `/checkskill [nombre|all]` — Escanea skills con 4 capas de análisis
-- `/lgsetup` — Verifica que LobsterGuard esté bien instalado
-- `/fixlist` — Lista los 12 fixes disponibles
+## Telegram Commands
+
+### Scanning
+- `/scan` — Full scan with 0-100 score
+- `/checkskill [name|all]` — Scan skills with 4-layer analysis
+- `/lgsetup` — Verify LobsterGuard installation
+- `/fixlist` — List all 12 available fixes
 
 ### Auto-fixes
-| Comando | Qué arregla |
-|---------|-------------|
-| `/fixfw` | Instala y configura firewall UFW |
-| `/fixbackup` | Configura backups automáticos diarios |
-| `/fixkernel` | Endurece parámetros del kernel |
-| `/fixcore` | Deshabilita core dumps |
-| `/fixaudit` | Instala y configura auditd |
-| `/fixsandbox` | Configura sandbox y permisos |
-| `/fixenv` | Protege variables de entorno con secrets |
-| `/fixtmp` | Limpia y asegura /tmp |
-| `/fixcode` | Restricciones de ejecución de código |
-| `/runuser` | Migra OpenClaw de root a usuario dedicado |
-| `/runall` | Ejecuta todos los fixes de una vez |
+| Command | What it fixes |
+|---------|---------------|
+| `/fixfw` | Install and configure UFW firewall |
+| `/fixbackup` | Set up automatic daily backups |
+| `/fixkernel` | Harden kernel parameters |
+| `/fixcore` | Disable core dumps |
+| `/fixaudit` | Install and configure auditd |
+| `/fixsandbox` | Configure sandbox and permissions |
+| `/fixenv` | Protect environment variables with secrets |
+| `/fixtmp` | Clean and secure /tmp |
+| `/fixcode` | Code execution restrictions |
+| `/runuser` | Migrate OpenClaw from root to dedicated user |
+| `/runall` | Run all fixes at once |
 
-## Instalación
+## Installation
 
 ```bash
 git clone https://github.com/jarb02/lobsterguard.git
@@ -53,42 +55,42 @@ cd lobsterguard
 bash install.sh
 ```
 
-El instalador:
-1. Detecta OpenClaw
-2. Instala scripts en ~/.openclaw/skills/lobsterguard/
-3. Registra el plugin en ~/.openclaw/extensions/
-4. Configura servicios systemd (auto-scan + quarantine watcher)
-5. Ejecuta scan inicial
+The installer:
+1. Detects OpenClaw
+2. Installs scripts to ~/.openclaw/skills/lobsterguard/
+3. Registers the plugin in ~/.openclaw/extensions/
+4. Configures systemd services (auto-scan + quarantine watcher)
+5. Runs initial scan
 
-## Requisitos
+## Requirements
 
-- OpenClaw instalado y corriendo
+- OpenClaw installed and running
 - Python 3
-- Plugin de Telegram configurado en OpenClaw
+- Telegram plugin configured in OpenClaw
 
-## Estructura
+## Project Structure
 
 ```
 lobsterguard/
 ├── scripts/
-│   ├── check.py              # 70 checks de seguridad
-│   ├── fix_engine.py          # 12 auto-fixes con rollback
-│   ├── skill_scanner.py       # Scanner de skills (4 capas)
-│   ├── autoscan.py            # Auto-scan periódico
-│   ├── quarantine_watcher.py  # Vigila carpeta quarantine
-│   └── runall_wrapper.sh      # Ejecuta todos los fixes
+│   ├── check.py              # 70 security checks
+│   ├── fix_engine.py          # 12 auto-fixes with rollback
+│   ├── skill_scanner.py       # Skill scanner (4 layers)
+│   ├── autoscan.py            # Periodic auto-scan
+│   ├── quarantine_watcher.py  # Quarantine folder monitor
+│   └── runall_wrapper.sh      # Run all fixes
 ├── extension/
 │   └── dist/
-│       ├── index.js           # Plugin OpenClaw (22 comandos)
-│       ├── interceptor.js     # 31 patrones de amenazas
+│       ├── index.js           # OpenClaw plugin (22 commands)
+│       ├── interceptor.js     # 31 threat patterns
 │       ├── watcher.js         # File watcher
-│       ├── fix_tool.js        # Tool de remediation
-│       └── types.js           # Tipos
-├── systemd/                   # Timer y servicios
-├── data/                      # Blacklist y datos
-└── install.sh                 # Instalador automático
+│       ├── fix_tool.js        # Remediation tool
+│       └── types.js           # Types
+├── systemd/                   # Timer and services
+├── data/                      # Blacklist and data
+└── install.sh                 # Automatic installer
 ```
 
-## Licencia
+## License
 
 MIT
