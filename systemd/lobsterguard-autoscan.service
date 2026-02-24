@@ -1,0 +1,13 @@
+[Unit]
+Description=LobsterGuard Auto-Scan
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 -u -W ignore %h/.openclaw/skills/lobsterguard/scripts/autoscan.py
+WorkingDirectory=%h/.openclaw/skills/lobsterguard
+Environment=HOME=%h
+TimeoutStartSec=600
+
+[Install]
+WantedBy=default.target
