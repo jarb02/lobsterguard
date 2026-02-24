@@ -1,89 +1,94 @@
-# LobsterGuard — Security Auditor for OpenClaw
+# LobsterGuard v6.0 — Security Auditor for OpenClaw
 
-**The first bilingual (Spanish/English) security skill for OpenClaw.**
-Designed for normal people, not security experts.
+Plugin de seguridad para OpenClaw controlable desde Telegram. Escanea, detecta y corrige problemas de seguridad en tu servidor.
 
-## What it does
+## Qué hace
 
-You write "revisa mi seguridad" or "check my security" in Telegram, and LobsterGuard gives you a clear security report with:
+- **70 checks de seguridad** en 6 categorías
+- **12 auto-fixes** ejecutables desde Telegram
+- **Scanner de skills** con 4 capas de análisis
+- **Quarantine watcher** que vigila skills sospechosas 24/7
+- **Auto-scan cada 6 horas** con alertas por Telegram
+- **31 patrones de amenazas** en tiempo real
 
-- What's OK and why it matters
-- What's at risk with simple explanations (no jargon)
-- Exact steps to fix each problem (copy-paste commands)
+## Categorías de Checks
 
-## 15 Security Checks
+| Categoría | Checks | Qué revisa |
+|-----------|--------|------------|
+| OpenClaw | 5 | Gateway, autenticación, versión, credenciales, skills |
+| Servidor | 10 | SSH, firewall, fail2ban, puertos, docker, disco |
+| Avanzado | 13 | Permisos, SSL, backups, supply chain, CORS, sandbox |
+| IA Agental | 22 | Prompt injection, exfiltración, MCP, typosquatting, memoria |
+| Forense | 7 | Rootkits, reverse shells, cryptominers, DNS tunneling |
+| Endurecimiento | 13 | Kernel, systemd, auditd, core dumps, swap, namespaces |
 
-### OpenClaw (1-5)
-| # | Check | Severity |
-|---|-------|----------|
-| 1 | Gateway exposed to internet | CRITICAL |
-| 2 | Gateway authentication | CRITICAL |
-| 3 | Version & known CVEs | HIGH |
-| 4 | Credentials in plaintext | HIGH |
-| 5 | Malicious skills installed | HIGH |
+## Comandos de Telegram
 
-### Server (6-15)
-| # | Check | Severity |
-|---|-------|----------|
-| 6 | SSH root login enabled | CRITICAL |
-| 7 | SSH password authentication | HIGH |
-| 8 | Firewall active | HIGH |
-| 9 | Fail2ban installed | MEDIUM |
-| 10 | Automatic security updates | MEDIUM |
-| 11 | OpenClaw running as root | HIGH |
-| 12 | Unnecessary open ports | MEDIUM |
-| 13 | Disk space | MEDIUM |
-| 14 | Docker security | MEDIUM |
-| 15 | Active intrusion attempts | INFO |
+### Escaneo
+- `/scan` — Escaneo completo con score 0-100
+- `/checkskill [nombre|all]` — Escanea skills con 4 capas de análisis
+- `/lgsetup` — Verifica que LobsterGuard esté bien instalado
+- `/fixlist` — Lista los 12 fixes disponibles
 
-## Installation
+### Auto-fixes
+| Comando | Qué arregla |
+|---------|-------------|
+| `/fixfw` | Instala y configura firewall UFW |
+| `/fixbackup` | Configura backups automáticos diarios |
+| `/fixkernel` | Endurece parámetros del kernel |
+| `/fixcore` | Deshabilita core dumps |
+| `/fixaudit` | Instala y configura auditd |
+| `/fixsandbox` | Configura sandbox y permisos |
+| `/fixenv` | Protege variables de entorno con secrets |
+| `/fixtmp` | Limpia y asegura /tmp |
+| `/fixcode` | Restricciones de ejecución de código |
+| `/runuser` | Migra OpenClaw de root a usuario dedicado |
+| `/runall` | Ejecuta todos los fixes de una vez |
 
-### One command:
+## Instalación
+
 ```bash
+git clone https://github.com/jarb02/lobsterguard.git
+cd lobsterguard
 bash install.sh
 ```
 
-### Manual:
-```bash
-mkdir -p ~/.openclaw/skills/lobsterguard/scripts ~/.openclaw/skills/lobsterguard/references
-# Copy SKILL.md, scripts/check.py, and references/risks.md to the folder
+El instalador:
+1. Detecta OpenClaw
+2. Instala scripts en ~/.openclaw/skills/lobsterguard/
+3. Registra el plugin en ~/.openclaw/extensions/
+4. Configura servicios systemd (auto-scan + quarantine watcher)
+5. Ejecuta scan inicial
+
+## Requisitos
+
+- OpenClaw instalado y corriendo
+- Python 3
+- Plugin de Telegram configurado en OpenClaw
+
+## Estructura
+
+```
+lobsterguard/
+├── scripts/
+│   ├── check.py              # 70 checks de seguridad
+│   ├── fix_engine.py          # 12 auto-fixes con rollback
+│   ├── skill_scanner.py       # Scanner de skills (4 capas)
+│   ├── autoscan.py            # Auto-scan periódico
+│   ├── quarantine_watcher.py  # Vigila carpeta quarantine
+│   └── runall_wrapper.sh      # Ejecuta todos los fixes
+├── extension/
+│   └── dist/
+│       ├── index.js           # Plugin OpenClaw (22 comandos)
+│       ├── interceptor.js     # 31 patrones de amenazas
+│       ├── watcher.js         # File watcher
+│       ├── fix_tool.js        # Tool de remediation
+│       └── types.js           # Tipos
+├── systemd/                   # Timer y servicios
+├── data/                      # Blacklist y datos
+└── install.sh                 # Instalador automático
 ```
 
-## SecureClaw Integration
-
-LobsterGuard works WITH SecureClaw, not against it. If SecureClaw is installed, LobsterGuard uses its audit scripts as backend and adds a bilingual, non-technical interface on top.
-
-If SecureClaw is not installed, LobsterGuard runs its own 15 checks and recommends SecureClaw for deeper analysis.
-
-## Languages
-
-LobsterGuard auto-detects the user's language:
-- Spanish triggers: "revisa mi seguridad", "estoy protegido", "hay riesgos"
-- English triggers: "check my security", "am I protected", "any risks"
-
-## Requirements
-
-- OpenClaw installed and running
-- Python 3
-- Telegram channel configured
-
-## Security Score
-
-LobsterGuard gives a score from 0-100:
-- **80-100**: Well protected
-- **50-79**: Room for improvement
-- **20-49**: Important risks to fix
-- **0-19**: In danger — fix now
-
-## Built with
-
-- Claude (Anthropic) for development
-- Security data from SecurityScorecard, Kaspersky, Snyk, MITRE, OWASP
-
-## License
+## Licencia
 
 MIT
-
----
-
-*LobsterGuard — Making OpenClaw security accessible to everyone, in any language.*
