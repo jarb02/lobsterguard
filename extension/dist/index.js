@@ -827,7 +827,7 @@ const lobsterguardPlugin = {
                 description: fc.desc,
                 handler: async (ctx) => {
                     try {
-                        return { text: (0, child_process_1.execSync)(`python3 -W ignore "${FIX_SCRIPT}" plan ${fc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 }) };
+                        return { text: (0, child_process_1.execSync)(`python3 -u -W ignore "${FIX_SCRIPT}" run ${fc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 }) };
                     } catch (err) {
                         return { text: "Error " + fc.name + ": " + (err.stdout || err.stderr || err.message || "unknown").substring(0, 500) };
                     }
@@ -851,7 +851,7 @@ const lobsterguardPlugin = {
                 description: sc.desc + " (sudo)",
                 handler: async (ctx) => {
                     try {
-                        return { text: (0, child_process_1.execSync)(`sudo python3 -W ignore "${FIX_SCRIPT}" plan ${sc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 }) };
+                        return { text: (0, child_process_1.execSync)(`sudo python3 -u -W ignore "${FIX_SCRIPT}" run ${sc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 }) };
                     } catch (err) {
                         return { text: "Error " + sc.name + ": " + (err.stdout || err.stderr || err.message || "unknown").substring(0, 500) };
                     }

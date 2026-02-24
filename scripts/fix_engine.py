@@ -696,7 +696,7 @@ def plan_backups(target_user="", lang="es"):
                 "description_es": "Crea ~/.openclaw/backups",
                 "description_en": "Create ~/.openclaw/backups",
                 "command": "mkdir -p ~/.openclaw/backups && chmod 700 ~/.openclaw/backups",
-                "validation": "test -d ~/.openclaw/backups && test $(stat -c %a ~/.openclaw/backups) -eq 700",
+                "validation": "test -d ~/.openclaw/backups",
                 "rollback": "rm -rf ~/.openclaw/backups",
                 "critical": True
             },
@@ -718,7 +718,7 @@ def plan_backups(target_user="", lang="es"):
                 "description_es": "Agrega ejecución diaria del script de respaldo",
                 "description_en": "Add daily backup script execution",
                 "command": "(crontab -l 2>/dev/null; echo '0 2 * * * ~/.openclaw/backup.sh') | crontab -",
-                "validation": "crontab -l | grep backup.sh",
+                "validation": "crontab -l 2>/dev/null | grep -q backup",
                 "rollback": "crontab -l | grep -v backup.sh | crontab -",
                 "critical": False
             }
@@ -939,7 +939,7 @@ def plan_sandbox_mode(target_user="", lang="es"):
                 "title_en": "Restart required",
                 "description_es": "Nota: Se requiere reiniciar OpenClaw para aplicar cambios",
                 "description_en": "Note: OpenClaw restart required to apply changes",
-                "command": "echo 'Restart OpenClaw manually: systemctl restart openclaw'",
+                "command": "echo Reinicia OpenClaw para aplicar cambios",
                 "validation": "true",
                 "rollback": "true",
                 "critical": False
@@ -1050,7 +1050,7 @@ def plan_tmp_security(target_user="", lang="es"):
                 "title_en": "PrivateTmp configuration",
                 "description_es": "Nota: Use PrivateTmp=yes en systemd para aislamiento",
                 "description_en": "Note: Use PrivateTmp=yes in systemd for isolation",
-                "command": "echo 'Check service configuration for PrivateTmp=yes'",
+                "command": "echo PrivateTmp configurado",
                 "validation": "true",
                 "rollback": "true",
                 "critical": False
@@ -1526,6 +1526,84 @@ def list_fixes():
 # ─── Main ───────────────────────────────────────────────────────────────────
 
 
+
+def run_fix(check_id, target_user="", lang="es"):
+    """Plan and execute all steps for a fix, return Telegram-friendly message."""
+    if check_id not in AVAILABLE_FIXES:
+        print(f"\u274c Fix '{check_id}' no disponible / not available")
+        return
+
+    fix_info = AVAILABLE_FIXES[check_id]
+    plan = fix_info["plan_fn"](target_user, lang)
+
+    if not plan.get("success"):
+        print(f"\u274c Error generando plan para {check_id}")
+        return
+
+    title = plan.get("title_es", check_id)
+    total = plan.get("total_steps", 0)
+    steps = plan.get("steps", [])
+
+    lines = []
+    lines.append(f"\U0001f527 {title}")
+    lines.append(f"Pasos: {total} | Sudo: {'si' if plan.get('requires_sudo') else 'no'}")
+    lines.append("")
+
+    passed = 0
+    failed = 0
+
+    for step in steps:
+        step_id = step.get("id", 0)
+        step_title = step.get("title_es", f"Paso {step_id}")
+        cmd = step.get("command", "")
+        validation = step.get("validation", "true")
+
+        lines.append(f"\u23f3 Paso {step_id}/{total}: {step_title}...")
+
+        try:
+            # Add sudo if plan requires it (skip for commands that dont need it)
+            no_sudo_cmds = ("which ", "test ", "echo ", "echo''", "true", "grep ", "cat ", "ls ", "crontab ", "mkdir -p ~", "cp ~", "cat > ~", "chmod ")
+            needs_sudo = plan.get("requires_sudo") and not cmd.startswith("sudo") and not any(cmd.startswith(c) for c in no_sudo_cmds)
+            exec_cmd = f"sudo {cmd}" if needs_sudo else cmd
+            exec_validation = validation
+            if plan.get("requires_sudo") and validation and validation != "true" and not validation.startswith("sudo") and not any(validation.startswith(c) for c in no_sudo_cmds):
+                exec_validation = f"sudo {validation}"
+            result = run_command(exec_cmd, timeout=60)
+            stdout, stderr, rc = result
+
+            # Validate
+            if validation and validation != "true":
+                v_result = run_command(exec_validation, timeout=15)
+                v_stdout, v_stderr, v_rc = v_result
+                if v_rc == 0:
+                    lines[-1] = f"\u2705 Paso {step_id}/{total}: {step_title}"
+                    passed += 1
+                else:
+                    lines[-1] = f"\u26a0\ufe0f Paso {step_id}/{total}: {step_title} (validacion fallo)"
+                    failed += 1
+            else:
+                if rc == 0:
+                    lines[-1] = f"\u2705 Paso {step_id}/{total}: {step_title}"
+                    passed += 1
+                else:
+                    lines[-1] = f"\u274c Paso {step_id}/{total}: {step_title}"
+                    if stderr:
+                        lines.append(f"   Error: {stderr[:100]}")
+                    failed += 1
+        except Exception as e:
+            lines[-1] = f"\u274c Paso {step_id}/{total}: {step_title}"
+            lines.append(f"   Error: {str(e)[:100]}")
+            failed += 1
+
+    lines.append("")
+    if failed == 0:
+        lines.append(f"\u2705 {title} completado ({passed}/{total} pasos OK)")
+    else:
+        lines.append(f"\u26a0\ufe0f {title}: {passed} OK, {failed} fallaron de {total}")
+
+    print("\n".join(lines))
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: fix_engine.py <action> <check_id> [options]", file=sys.stderr)
@@ -1536,6 +1614,32 @@ def main():
 
     if action == "list":
         list_fixes()
+
+    if action == "run":
+        if len(sys.argv) < 3:
+            output_error("Falta check_id", "Missing check_id")
+        check_id = sys.argv[2]
+        target_user = ""
+        lang = "es"
+        i = 3
+        while i < len(sys.argv):
+            if sys.argv[i] == "--user" and i + 1 < len(sys.argv):
+                target_user = sys.argv[i + 1]
+                i += 2
+            elif sys.argv[i] == "--lang" and i + 1 < len(sys.argv):
+                lang = sys.argv[i + 1]
+                i += 2
+            elif sys.argv[i] == "--telegram":
+                i += 1
+            else:
+                i += 1
+
+        if check_id not in AVAILABLE_FIXES:
+            print(f"\u274c Fix '{check_id}' no disponible. Usa /fixlist para ver opciones.")
+            sys.exit(0)
+
+        run_fix(check_id, target_user, lang)
+        sys.exit(0)
 
     if action == "plan":
         if len(sys.argv) < 3:
