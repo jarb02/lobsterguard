@@ -602,6 +602,645 @@ WantedBy=default.target
 # ─── Step Execution ─────────────────────────────────────────────────────────
 
 
+
+def plan_firewall(target_user="", lang="es"):
+    """Plan function for firewall configuration"""
+    plan = {
+        "success": True,
+        "check_id": "firewall",
+        "title_es": "Configurar Firewall",
+        "title_en": "Configure Firewall",
+        "description_es": "Instala y configura ufw para proteger el servidor",
+        "description_en": "Install and configure ufw to protect the server",
+        "estimated_time_es": "5 minutos",
+        "estimated_time_en": "5 minutes",
+        "requires_sudo": True,
+        "total_steps": 4,
+        "steps": [
+            {
+                "id": 1,
+                "title_es": "Instalar UFW",
+                "title_en": "Install UFW",
+                "description_es": "Instala Uncomplicated Firewall",
+                "description_en": "Install Uncomplicated Firewall",
+                "command": "apt-get update && apt-get install -y ufw",
+                "validation": "which ufw",
+                "rollback": "apt-get remove -y ufw",
+                "critical": True
+            },
+            {
+                "id": 2,
+                "title_es": "Permitir SSH",
+                "title_en": "Allow SSH",
+                "description_es": "Permite acceso SSH en puerto 22",
+                "description_en": "Allow SSH access on port 22",
+                "command": "ufw allow 22/tcp",
+                "validation": "ufw status | grep 22/tcp",
+                "rollback": "ufw delete allow 22/tcp",
+                "critical": True
+            },
+            {
+                "id": 3,
+                "title_es": "Permitir OpenClaw",
+                "title_en": "Allow OpenClaw",
+                "description_es": "Permite acceso a OpenClaw en localhost:18789",
+                "description_en": "Allow OpenClaw access on localhost:18789",
+                "command": "ufw allow from 127.0.0.1 to 127.0.0.1 port 18789",
+                "validation": "ufw status | grep 18789",
+                "rollback": "ufw delete allow from 127.0.0.1 to 127.0.0.1 port 18789",
+                "critical": True
+            },
+            {
+                "id": 4,
+                "title_es": "Habilitar UFW",
+                "title_en": "Enable UFW",
+                "description_es": "Activa el firewall ufw",
+                "description_en": "Activate ufw firewall",
+                "command": "ufw --force enable",
+                "validation": "ufw status | grep 'Status: active'",
+                "rollback": "ufw disable",
+                "critical": True
+            }
+        ]
+    }
+
+    state = load_fix_state()
+    state["active_fix"] = {
+        "check_id": "firewall",
+        "timestamp": str(__import__('datetime').datetime.now()),
+        "target_user": target_user
+    }
+    state["plan"] = plan
+    save_fix_state(state)
+    return plan
+
+
+def plan_backups(target_user="", lang="es"):
+    """Plan function for backup configuration"""
+    plan = {
+        "success": True,
+        "check_id": "backups",
+        "title_es": "Configurar Copias de Seguridad",
+        "title_en": "Configure Backups",
+        "description_es": "Establece un sistema de copias de seguridad automáticas",
+        "description_en": "Set up automatic backup system",
+        "estimated_time_es": "10 minutos",
+        "estimated_time_en": "10 minutes",
+        "requires_sudo": True,
+        "total_steps": 3,
+        "steps": [
+            {
+                "id": 1,
+                "title_es": "Crear directorio de copias",
+                "title_en": "Create backup directory",
+                "description_es": "Crea ~/.openclaw/backups",
+                "description_en": "Create ~/.openclaw/backups",
+                "command": "mkdir -p ~/.openclaw/backups && chmod 700 ~/.openclaw/backups",
+                "validation": "test -d ~/.openclaw/backups && test $(stat -c %a ~/.openclaw/backups) -eq 700",
+                "rollback": "rm -rf ~/.openclaw/backups",
+                "critical": True
+            },
+            {
+                "id": 2,
+                "title_es": "Crear script de respaldo",
+                "title_en": "Create backup script",
+                "description_es": "Crea script de backup automático",
+                "description_en": "Create automatic backup script",
+                "command": "cat > ~/.openclaw/backup.sh << 'EOF'\n#!/bin/bash\nBACKUP_DIR=\"$HOME/.openclaw/backups\"\nTIMESTAMP=$(date +%Y%m%d_%H%M%S)\ntar -czf \"$BACKUP_DIR/openclaw_$TIMESTAMP.tar.gz\" ~/.openclaw --exclude=backups\nfind \"$BACKUP_DIR\" -name \"openclaw_*.tar.gz\" -mtime +30 -delete\nEOF\nchmod +x ~/.openclaw/backup.sh",
+                "validation": "test -x ~/.openclaw/backup.sh",
+                "rollback": "rm -f ~/.openclaw/backup.sh",
+                "critical": True
+            },
+            {
+                "id": 3,
+                "title_es": "Agregar cron diario",
+                "title_en": "Add daily cron",
+                "description_es": "Agrega ejecución diaria del script de respaldo",
+                "description_en": "Add daily backup script execution",
+                "command": "(crontab -l 2>/dev/null; echo '0 2 * * * ~/.openclaw/backup.sh') | crontab -",
+                "validation": "crontab -l | grep backup.sh",
+                "rollback": "crontab -l | grep -v backup.sh | crontab -",
+                "critical": False
+            }
+        ]
+    }
+
+    state = load_fix_state()
+    state["active_fix"] = {
+        "check_id": "backups",
+        "timestamp": str(__import__('datetime').datetime.now()),
+        "target_user": target_user
+    }
+    state["plan"] = plan
+    save_fix_state(state)
+    return plan
+
+
+def plan_kernel_hardening(target_user="", lang="es"):
+    """Plan function for kernel hardening"""
+    plan = {
+        "success": True,
+        "check_id": "kernel_hardening",
+        "title_es": "Endurecimiento del Kernel",
+        "title_en": "Kernel Hardening",
+        "description_es": "Aplica configuraciones de seguridad del kernel",
+        "description_en": "Apply kernel security configurations",
+        "estimated_time_es": "5 minutos",
+        "estimated_time_en": "5 minutes",
+        "requires_sudo": True,
+        "total_steps": 2,
+        "steps": [
+            {
+                "id": 1,
+                "title_es": "Respaldar sysctl.conf",
+                "title_en": "Backup sysctl.conf",
+                "description_es": "Respalda la configuración actual de sysctl",
+                "description_en": "Backup current sysctl configuration",
+                "command": "sudo cp /etc/sysctl.conf /etc/sysctl.conf.backup",
+                "validation": "test -f /etc/sysctl.conf.backup",
+                "rollback": "sudo mv /etc/sysctl.conf.backup /etc/sysctl.conf",
+                "critical": True
+            },
+            {
+                "id": 2,
+                "title_es": "Aplicar endurecimiento",
+                "title_en": "Apply hardening",
+                "description_es": "Aplica configuraciones de kernel security",
+                "description_en": "Apply kernel security settings",
+                "command": "sudo tee -a /etc/sysctl.conf > /dev/null << 'EOF'\nnet.ipv4.conf.all.rp_filter = 1\nnet.ipv4.conf.default.rp_filter = 1\nnet.ipv4.icmp_echo_ignore_broadcasts = 1\nnet.ipv4.conf.all.send_redirects = 0\nnet.ipv4.conf.default.send_redirects = 0\nkernel.sysrq = 0\nkernel.unprivileged_userns_clone = 0\nEOF\nsudo sysctl -p",
+                "validation": "sysctl net.ipv4.conf.all.rp_filter | grep '= 1'",
+                "rollback": "sudo cp /etc/sysctl.conf.backup /etc/sysctl.conf && sudo sysctl -p",
+                "critical": True
+            }
+        ]
+    }
+
+    state = load_fix_state()
+    state["active_fix"] = {
+        "check_id": "kernel_hardening",
+        "timestamp": str(__import__('datetime').datetime.now()),
+        "target_user": target_user
+    }
+    state["plan"] = plan
+    save_fix_state(state)
+    return plan
+
+
+def plan_core_dump_protection(target_user="", lang="es"):
+    """Plan function for core dump protection"""
+    plan = {
+        "success": True,
+        "check_id": "core_dump_protection",
+        "title_es": "Protección contra Core Dumps",
+        "title_en": "Core Dump Protection",
+        "description_es": "Deshabilita core dumps para evitar exposición de datos",
+        "description_en": "Disable core dumps to prevent data exposure",
+        "estimated_time_es": "5 minutos",
+        "estimated_time_en": "5 minutes",
+        "requires_sudo": True,
+        "total_steps": 2,
+        "steps": [
+            {
+                "id": 1,
+                "title_es": "Configurar limits.conf",
+                "title_en": "Configure limits.conf",
+                "description_es": "Deshabilita core dumps en limits.conf",
+                "description_en": "Disable core dumps in limits.conf",
+                "command": "sudo tee -a /etc/security/limits.conf > /dev/null << 'EOF'\n* hard core 0\n* soft core 0\nEOF",
+                "validation": "grep 'hard core 0' /etc/security/limits.conf",
+                "rollback": "sudo sed -i '/^\\* hard core 0/d; /^\\* soft core 0/d' /etc/security/limits.conf",
+                "critical": True
+            },
+            {
+                "id": 2,
+                "title_es": "Aplicar configuración sysctl",
+                "title_en": "Apply sysctl configuration",
+                "description_es": "Aplica kernel.core_pattern en sysctl",
+                "description_en": "Apply kernel.core_pattern via sysctl",
+                "command": "sudo sysctl -w kernel.core_pattern=/dev/null",
+                "validation": "sysctl kernel.core_pattern | grep '/dev/null'",
+                "rollback": "sudo sysctl -w kernel.core_pattern=core",
+                "critical": True
+            }
+        ]
+    }
+
+    state = load_fix_state()
+    state["active_fix"] = {
+        "check_id": "core_dump_protection",
+        "timestamp": str(__import__('datetime').datetime.now()),
+        "target_user": target_user
+    }
+    state["plan"] = plan
+    save_fix_state(state)
+    return plan
+
+
+def plan_auditd_logging(target_user="", lang="es"):
+    """Plan function for auditd logging configuration"""
+    plan = {
+        "success": True,
+        "check_id": "auditd_logging",
+        "title_es": "Configurar Auditoría",
+        "title_en": "Configure Auditing",
+        "description_es": "Instala y configura auditd para logging de seguridad",
+        "description_en": "Install and configure auditd for security logging",
+        "estimated_time_es": "10 minutos",
+        "estimated_time_en": "10 minutes",
+        "requires_sudo": True,
+        "total_steps": 3,
+        "steps": [
+            {
+                "id": 1,
+                "title_es": "Instalar auditd",
+                "title_en": "Install auditd",
+                "description_es": "Instala el servicio de auditoría",
+                "description_en": "Install audit service",
+                "command": "sudo apt-get update && sudo apt-get install -y auditd audispd-plugins",
+                "validation": "which auditd",
+                "rollback": "sudo apt-get remove -y auditd audispd-plugins",
+                "critical": True
+            },
+            {
+                "id": 2,
+                "title_es": "Agregar reglas de auditoría",
+                "title_en": "Add audit rules",
+                "description_es": "Agrega reglas de auditoría para OpenClaw",
+                "description_en": "Add audit rules for OpenClaw",
+                "command": "sudo tee -a /etc/audit/rules.d/openclaw.rules > /dev/null << 'EOF'\n-w /home -p wa -k openclaw_home_changes\n-w /tmp -p wa -k tmp_changes\n-a always,exit -F arch=b64 -S adjtimex,settimeofday -k time-change\nEOF\nsudo systemctl restart auditd",
+                "validation": "sudo auditctl -l | grep openclaw",
+                "rollback": "sudo rm /etc/audit/rules.d/openclaw.rules && sudo systemctl restart auditd",
+                "critical": False
+            },
+            {
+                "id": 3,
+                "title_es": "Habilitar servicio",
+                "title_en": "Enable service",
+                "description_es": "Habilita el servicio de auditoría",
+                "description_en": "Enable audit service",
+                "command": "sudo systemctl enable auditd && sudo systemctl start auditd",
+                "validation": "sudo systemctl is-active auditd | grep active",
+                "rollback": "sudo systemctl disable auditd && sudo systemctl stop auditd",
+                "critical": True
+            }
+        ]
+    }
+
+    state = load_fix_state()
+    state["active_fix"] = {
+        "check_id": "auditd_logging",
+        "timestamp": str(__import__('datetime').datetime.now()),
+        "target_user": target_user
+    }
+    state["plan"] = plan
+    save_fix_state(state)
+    return plan
+
+
+def plan_sandbox_mode(target_user="", lang="es"):
+    """Plan function for sandbox mode configuration"""
+    plan = {
+        "success": True,
+        "check_id": "sandbox_mode",
+        "title_es": "Modo Sandbox",
+        "title_en": "Sandbox Mode",
+        "description_es": "Configura modo sandbox para ejecución segura",
+        "description_en": "Configure sandbox mode for secure execution",
+        "estimated_time_es": "10 minutos",
+        "estimated_time_en": "10 minutes",
+        "requires_sudo": True,
+        "total_steps": 3,
+        "steps": [
+            {
+                "id": 1,
+                "title_es": "Respaldar configuración",
+                "title_en": "Backup configuration",
+                "description_es": "Respalda la configuración actual de gateway.json",
+                "description_en": "Backup current gateway.json configuration",
+                "command": "test -f ~/.openclaw/gateway.json && cp ~/.openclaw/gateway.json ~/.openclaw/gateway.json.backup || echo 'No backup needed'",
+                "validation": "true",
+                "rollback": "test -f ~/.openclaw/gateway.json.backup && mv ~/.openclaw/gateway.json.backup ~/.openclaw/gateway.json || true",
+                "critical": False
+            },
+            {
+                "id": 2,
+                "title_es": "Crear política de permisos",
+                "title_en": "Create permission policy",
+                "description_es": "Crea política de permisos sandbox en gateway.json",
+                "description_en": "Create sandbox permission policy in gateway.json",
+                "command": "cat > ~/.openclaw/gateway.json << 'EOF'\n{\n  \"sandbox\": {\n    \"enabled\": true,\n    \"restrict_filesystem\": true,\n    \"restrict_network\": true,\n    \"restrict_syscalls\": true\n  }\n}\nEOF",
+                "validation": "grep -q 'sandbox' ~/.openclaw/gateway.json",
+                "rollback": "rm -f ~/.openclaw/gateway.json",
+                "critical": True
+            },
+            {
+                "id": 3,
+                "title_es": "Reinicio requerido",
+                "title_en": "Restart required",
+                "description_es": "Nota: Se requiere reiniciar OpenClaw para aplicar cambios",
+                "description_en": "Note: OpenClaw restart required to apply changes",
+                "command": "echo 'Restart OpenClaw manually: systemctl restart openclaw'",
+                "validation": "true",
+                "rollback": "true",
+                "critical": False
+            }
+        ]
+    }
+
+    state = load_fix_state()
+    state["active_fix"] = {
+        "check_id": "sandbox_mode",
+        "timestamp": str(__import__('datetime').datetime.now()),
+        "target_user": target_user
+    }
+    state["plan"] = plan
+    save_fix_state(state)
+    return plan
+
+
+def plan_env_leakage(target_user="", lang="es"):
+    """Plan function for environment variable leakage prevention"""
+    plan = {
+        "success": True,
+        "check_id": "env_leakage",
+        "title_es": "Prevención de Fugas de Env",
+        "title_en": "Environment Leakage Prevention",
+        "description_es": "Previene exposición de variables de entorno",
+        "description_en": "Prevent environment variable exposure",
+        "estimated_time_es": "10 minutos",
+        "estimated_time_en": "10 minutes",
+        "requires_sudo": True,
+        "total_steps": 3,
+        "steps": [
+            {
+                "id": 1,
+                "title_es": "Crear archivo .env.secure",
+                "title_en": "Create .env.secure",
+                "description_es": "Crea archivo .env.secure con permisos restrictivos",
+                "description_en": "Create .env.secure with restrictive permissions",
+                "command": "cat > ~/.openclaw/.env.secure << 'EOF'\n# Secure environment variables\n# Only loaded by privileged processes\nEOF\nchmod 600 ~/.openclaw/.env.secure",
+                "validation": "test -f ~/.openclaw/.env.secure && test $(stat -c %a ~/.openclaw/.env.secure) -eq 600",
+                "rollback": "rm -f ~/.openclaw/.env.secure",
+                "critical": True
+            },
+            {
+                "id": 2,
+                "title_es": "Actualizar systemd",
+                "title_en": "Update systemd",
+                "description_es": "Configura EnvironmentFile en servicio openclaw",
+                "description_en": "Configure EnvironmentFile in openclaw service",
+                "command": "sudo mkdir -p /etc/systemd/system/openclaw.service.d && sudo tee /etc/systemd/system/openclaw.service.d/env.conf > /dev/null << 'EOF'\n[Service]\nEnvironmentFile=~/.openclaw/.env.secure\nEOF",
+                "validation": "test -f /etc/systemd/system/openclaw.service.d/env.conf",
+                "rollback": "sudo rm /etc/systemd/system/openclaw.service.d/env.conf",
+                "critical": True
+            },
+            {
+                "id": 3,
+                "title_es": "Recargar systemd",
+                "title_en": "Reload systemd",
+                "description_es": "Recarga la configuración de systemd",
+                "description_en": "Reload systemd configuration",
+                "command": "sudo systemctl daemon-reload",
+                "validation": "true",
+                "rollback": "true",
+                "critical": True
+            }
+        ]
+    }
+
+    state = load_fix_state()
+    state["active_fix"] = {
+        "check_id": "env_leakage",
+        "timestamp": str(__import__('datetime').datetime.now()),
+        "target_user": target_user
+    }
+    state["plan"] = plan
+    save_fix_state(state)
+    return plan
+
+
+def plan_tmp_security(target_user="", lang="es"):
+    """Plan function for /tmp security hardening"""
+    plan = {
+        "success": True,
+        "check_id": "tmp_security",
+        "title_es": "Seguridad de /tmp",
+        "title_en": "/tmp Security",
+        "description_es": "Asegura directorio /tmp contra ejecución de código",
+        "description_en": "Secure /tmp directory against code execution",
+        "estimated_time_es": "5 minutos",
+        "estimated_time_en": "5 minutes",
+        "requires_sudo": True,
+        "total_steps": 2,
+        "steps": [
+            {
+                "id": 1,
+                "title_es": "Limpiar archivos ejecutables",
+                "title_en": "Clean executable files",
+                "description_es": "Elimina archivos ejecutables en /tmp",
+                "description_en": "Remove executable files in /tmp",
+                "command": "find /tmp -type f -executable -delete 2>/dev/null || true",
+                "validation": "test ! -f /tmp/*.bin 2>/dev/null || echo 'Cleanup complete'",
+                "rollback": "echo 'Rollback: recreate if needed'",
+                "critical": False
+            },
+            {
+                "id": 2,
+                "title_es": "Configuración PrivateTmp",
+                "title_en": "PrivateTmp configuration",
+                "description_es": "Nota: Use PrivateTmp=yes en systemd para aislamiento",
+                "description_en": "Note: Use PrivateTmp=yes in systemd for isolation",
+                "command": "echo 'Check service configuration for PrivateTmp=yes'",
+                "validation": "true",
+                "rollback": "true",
+                "critical": False
+            }
+        ]
+    }
+
+    state = load_fix_state()
+    state["active_fix"] = {
+        "check_id": "tmp_security",
+        "timestamp": str(__import__('datetime').datetime.now()),
+        "target_user": target_user
+    }
+    state["plan"] = plan
+    save_fix_state(state)
+    return plan
+
+
+def plan_code_execution_sandbox(target_user="", lang="es"):
+    """Plan function for code execution sandbox"""
+    plan = {
+        "success": True,
+        "check_id": "code_execution_sandbox",
+        "title_es": "Sandbox de Ejecución de Código",
+        "title_en": "Code Execution Sandbox",
+        "description_es": "Restringe llamadas al sistema para ejecución de código",
+        "description_en": "Restrict syscalls for code execution",
+        "estimated_time_es": "10 minutos",
+        "estimated_time_en": "10 minutes",
+        "requires_sudo": True,
+        "total_steps": 2,
+        "steps": [
+            {
+                "id": 1,
+                "title_es": "Agregar restricción de arquitectura",
+                "title_en": "Add architecture restriction",
+                "description_es": "Configura SystemCallArchitectures en servicio",
+                "description_en": "Configure SystemCallArchitectures in service",
+                "command": "sudo mkdir -p /etc/systemd/system/openclaw.service.d && sudo tee /etc/systemd/system/openclaw.service.d/syscall.conf > /dev/null << 'EOF'\n[Service]\nSystemCallArchitectures=native\nSystemCallFilter=@system-service\nEOF",
+                "validation": "test -f /etc/systemd/system/openclaw.service.d/syscall.conf",
+                "rollback": "sudo rm /etc/systemd/system/openclaw.service.d/syscall.conf",
+                "critical": True
+            },
+            {
+                "id": 2,
+                "title_es": "Recargar servicios",
+                "title_en": "Reload services",
+                "description_es": "Recarga la configuración de systemd",
+                "description_en": "Reload systemd configuration",
+                "command": "sudo systemctl daemon-reload",
+                "validation": "true",
+                "rollback": "true",
+                "critical": True
+            }
+        ]
+    }
+
+    state = load_fix_state()
+    state["active_fix"] = {
+        "check_id": "code_execution_sandbox",
+        "timestamp": str(__import__('datetime').datetime.now()),
+        "target_user": target_user
+    }
+    state["plan"] = plan
+    save_fix_state(state)
+    return plan
+
+
+def plan_systemd_hardening(target_user="", lang="es"):
+    """Plan function for systemd service hardening"""
+    plan = {
+        "success": True,
+        "check_id": "systemd_hardening",
+        "title_es": "Endurecimiento de Systemd",
+        "title_en": "Systemd Hardening",
+        "description_es": "Aplica configuraciones de seguridad en systemd",
+        "description_en": "Apply security configurations to systemd",
+        "estimated_time_es": "10 minutos",
+        "estimated_time_en": "10 minutes",
+        "requires_sudo": True,
+        "total_steps": 3,
+        "steps": [
+            {
+                "id": 1,
+                "title_es": "Respaldar servicio",
+                "title_en": "Backup service",
+                "description_es": "Respalda la configuración del servicio openclaw",
+                "description_en": "Backup openclaw service configuration",
+                "command": "sudo cp /etc/systemd/system/openclaw.service /etc/systemd/system/openclaw.service.backup 2>/dev/null || echo 'No existing service'",
+                "validation": "true",
+                "rollback": "sudo mv /etc/systemd/system/openclaw.service.backup /etc/systemd/system/openclaw.service || true",
+                "critical": False
+            },
+            {
+                "id": 2,
+                "title_es": "Agregar opciones de seguridad",
+                "title_en": "Add security options",
+                "description_es": "Agrega ProtectSystem, ProtectHome, NoNewPrivileges",
+                "description_en": "Add ProtectSystem, ProtectHome, NoNewPrivileges",
+                "command": "sudo mkdir -p /etc/systemd/system/openclaw.service.d && sudo tee /etc/systemd/system/openclaw.service.d/hardening.conf > /dev/null << 'EOF'\n[Service]\nProtectSystem=strict\nProtectHome=yes\nNoNewPrivileges=yes\nPrivateDevices=yes\nPrivateTmp=yes\nUMask=0077\nEOF",
+                "validation": "test -f /etc/systemd/system/openclaw.service.d/hardening.conf",
+                "rollback": "sudo rm /etc/systemd/system/openclaw.service.d/hardening.conf",
+                "critical": True
+            },
+            {
+                "id": 3,
+                "title_es": "Recargar y reiniciar",
+                "title_en": "Reload and restart",
+                "description_es": "Recarga systemd e reinicia el servicio",
+                "description_en": "Reload systemd and restart service",
+                "command": "sudo systemctl daemon-reload && sudo systemctl restart openclaw",
+                "validation": "sudo systemctl is-active openclaw | grep active",
+                "rollback": "sudo systemctl daemon-reload && sudo systemctl restart openclaw",
+                "critical": True
+            }
+        ]
+    }
+
+    state = load_fix_state()
+    state["active_fix"] = {
+        "check_id": "systemd_hardening",
+        "timestamp": str(__import__('datetime').datetime.now()),
+        "target_user": target_user
+    }
+    state["plan"] = plan
+    save_fix_state(state)
+    return plan
+
+
+def plan_incident_response(target_user="", lang="es"):
+    """Plan function for incident response setup"""
+    plan = {
+        "success": True,
+        "check_id": "incident_response",
+        "title_es": "Respuesta a Incidentes",
+        "title_en": "Incident Response",
+        "description_es": "Configura herramientas y procedimientos de respuesta a incidentes",
+        "description_en": "Set up incident response tools and procedures",
+        "estimated_time_es": "15 minutos",
+        "estimated_time_en": "15 minutes",
+        "requires_sudo": True,
+        "total_steps": 3,
+        "steps": [
+            {
+                "id": 1,
+                "title_es": "Crear script de respuesta",
+                "title_en": "Create response script",
+                "description_es": "Crea script de respuesta a incidentes",
+                "description_en": "Create incident response script",
+                "command": "cat > ~/.openclaw/incident_response.sh << 'EOF'\n#!/bin/bash\necho 'Incident Response Initiated'\necho \"Timestamp: $(date)\" > ~/.openclaw/incident_report.txt\necho \"Hostname: $(hostname)\" >> ~/.openclaw/incident_report.txt\necho \"Current Users: $(who)\" >> ~/.openclaw/incident_report.txt\necho \"Open Ports: $(netstat -tuln 2>/dev/null || ss -tuln)\" >> ~/.openclaw/incident_report.txt\necho \"Recent Commands: $(last -20)\" >> ~/.openclaw/incident_report.txt\nEOF\nchmod +x ~/.openclaw/incident_response.sh",
+                "validation": "test -x ~/.openclaw/incident_response.sh",
+                "rollback": "rm -f ~/.openclaw/incident_response.sh",
+                "critical": True
+            },
+            {
+                "id": 2,
+                "title_es": "Crear recolector de logs",
+                "title_en": "Create log collector",
+                "description_es": "Crea script de recopilación de logs de seguridad",
+                "description_en": "Create security log collection script",
+                "command": "cat > ~/.openclaw/collect_logs.sh << 'EOF'\n#!/bin/bash\nLOG_DIR=\"~/.openclaw/incident_logs\"\nmkdir -p \"$LOG_DIR\"\ncp /var/log/auth.log \"$LOG_DIR/\" 2>/dev/null || true\ncp /var/log/syslog \"$LOG_DIR/\" 2>/dev/null || true\nsudo journalctl -xe > \"$LOG_DIR/systemd.log\" 2>/dev/null || true\nsudo auditctl -l > \"$LOG_DIR/audit_rules.log\" 2>/dev/null || true\necho \"Logs collected to $LOG_DIR\"\nEOF\nchmod +x ~/.openclaw/collect_logs.sh",
+                "validation": "test -x ~/.openclaw/collect_logs.sh",
+                "rollback": "rm -f ~/.openclaw/collect_logs.sh",
+                "critical": True
+            },
+            {
+                "id": 3,
+                "title_es": "Crear directorio de documentación",
+                "title_en": "Create documentation directory",
+                "description_es": "Crea directorio para documentación de incidentes",
+                "description_en": "Create incident documentation directory",
+                "command": "mkdir -p ~/.openclaw/incident_docs && cat > ~/.openclaw/incident_docs/README.md << 'EOF'\n# Incident Response Documentation\n\n## Contact Information\n- Security Team: security@example.com\n- Escalation: incidents@example.com\n\n## Incident Classification\n- Critical: System compromise\n- High: Unauthorized access attempt\n- Medium: Policy violation\n- Low: Configuration drift\n\n## Response Procedures\n1. Isolate affected system\n2. Preserve evidence\n3. Collect logs and artifacts\n4. Notify stakeholders\n5. Begin investigation\n6. Implement remediation\n7. Document findings\nEOF\nchmod 600 ~/.openclaw/incident_docs/README.md",
+                "validation": "test -f ~/.openclaw/incident_docs/README.md",
+                "rollback": "rm -rf ~/.openclaw/incident_docs",
+                "critical": False
+            }
+        ]
+    }
+
+    state = load_fix_state()
+    state["active_fix"] = {
+        "check_id": "incident_response",
+        "timestamp": str(__import__('datetime').datetime.now()),
+        "target_user": target_user
+    }
+    state["plan"] = plan
+    save_fix_state(state)
+    return plan
+
+
 def execute_step(check_id, step_id):
     """Execute a single step of a fix plan."""
     state = load_fix_state()
@@ -791,6 +1430,83 @@ AVAILABLE_FIXES = {
         "verify_fn": verify,
         "title_es": "Migrar OpenClaw de root a usuario no-root",
         "title_en": "Migrate OpenClaw from root to non-root user",
+    },
+    "firewall": {
+        "plan_fn": plan_firewall,
+        "verify_fn": verify,
+        "title_es": "Configurar Firewall UFW",
+        "title_en": "Configure UFW Firewall",
+        "auto_fixable": True,
+    },
+    "backups": {
+        "plan_fn": plan_backups,
+        "verify_fn": verify,
+        "title_es": "Configurar Copias de Seguridad",
+        "title_en": "Configure Automated Backups",
+        "auto_fixable": True,
+    },
+    "kernel_hardening": {
+        "plan_fn": plan_kernel_hardening,
+        "verify_fn": verify,
+        "title_es": "Hardening del Kernel",
+        "title_en": "Kernel Hardening",
+        "auto_fixable": True,
+    },
+    "core_dump_protection": {
+        "plan_fn": plan_core_dump_protection,
+        "verify_fn": verify,
+        "title_es": "Proteccion de Core Dumps",
+        "title_en": "Core Dump Protection",
+        "auto_fixable": True,
+    },
+    "auditd_logging": {
+        "plan_fn": plan_auditd_logging,
+        "verify_fn": verify,
+        "title_es": "Configuracion de Auditd",
+        "title_en": "Configure Auditd Logging",
+        "auto_fixable": True,
+    },
+    "sandbox_mode": {
+        "plan_fn": plan_sandbox_mode,
+        "verify_fn": verify,
+        "title_es": "Activar limites del agente",
+        "title_en": "Enable agent restrictions",
+        "auto_fixable": True,
+    },
+    "env_leakage": {
+        "plan_fn": plan_env_leakage,
+        "verify_fn": verify,
+        "title_es": "Proteger contraseñas en memoria",
+        "title_en": "Protect passwords in memory",
+        "auto_fixable": True,
+    },
+    "tmp_security": {
+        "plan_fn": plan_tmp_security,
+        "verify_fn": verify,
+        "title_es": "Seguridad de /tmp",
+        "title_en": "/tmp Security",
+        "auto_fixable": True,
+    },
+    "code_execution_sandbox": {
+        "plan_fn": plan_code_execution_sandbox,
+        "verify_fn": verify,
+        "title_es": "Sandbox de ejecucion de codigo",
+        "title_en": "Code Execution Sandbox",
+        "auto_fixable": True,
+    },
+    "systemd_hardening": {
+        "plan_fn": plan_systemd_hardening,
+        "verify_fn": verify,
+        "title_es": "Endurecimiento de Systemd",
+        "title_en": "Systemd Hardening",
+        "auto_fixable": True,
+    },
+    "incident_response": {
+        "plan_fn": plan_incident_response,
+        "verify_fn": verify,
+        "title_es": "Preparacion de Respuesta a Incidentes",
+        "title_en": "Incident Response Readiness",
+        "auto_fixable": True,
     },
 }
 

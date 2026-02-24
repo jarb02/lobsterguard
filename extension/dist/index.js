@@ -811,15 +811,15 @@ const lobsterguardPlugin = {
         });
 
         const fixCmds = [
-            { name: "fixfw", check: "firewall_config", desc: "Configurar firewall" },
-            { name: "fixbackup", check: "backup_config", desc: "Configurar backups" },
+            { name: "fixfw", check: "firewall", desc: "Configurar firewall" },
+            { name: "fixbackup", check: "backups", desc: "Configurar backups" },
             { name: "fixkernel", check: "kernel_hardening", desc: "Endurecer kernel" },
-            { name: "fixcore", check: "core_dumps", desc: "Deshabilitar core dumps" },
-            { name: "fixaudit", check: "audit_logging", desc: "Configurar auditoria" },
-            { name: "fixsandbox", check: "sandbox_security", desc: "Configurar sandbox" },
-            { name: "fixenv", check: "session_token_security", desc: "Proteger tokens" },
+            { name: "fixcore", check: "core_dump_protection", desc: "Deshabilitar core dumps" },
+            { name: "fixaudit", check: "auditd_logging", desc: "Configurar auditoria" },
+            { name: "fixsandbox", check: "sandbox_mode", desc: "Configurar sandbox" },
+            { name: "fixenv", check: "env_leakage", desc: "Proteger tokens" },
             { name: "fixtmp", check: "tmp_security", desc: "Proteger /tmp" },
-            { name: "fixcode", check: "code_integrity", desc: "Verificar integridad" },
+            { name: "fixcode", check: "code_execution_sandbox", desc: "Verificar integridad" },
         ];
         for (const fc of fixCmds) {
             api.registerCommand({
@@ -827,7 +827,7 @@ const lobsterguardPlugin = {
                 description: fc.desc,
                 handler: async (ctx) => {
                     try {
-                        return { text: (0, child_process_1.execSync)(`python3 -W ignore "${FIX_SCRIPT}" fix ${fc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 }) };
+                        return { text: (0, child_process_1.execSync)(`python3 -W ignore "${FIX_SCRIPT}" plan ${fc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 }) };
                     } catch (err) {
                         return { text: "Error " + fc.name + ": " + (err.stdout || err.stderr || err.message || "unknown").substring(0, 500) };
                     }
@@ -837,12 +837,12 @@ const lobsterguardPlugin = {
 
         const sudoCmds = [
             { name: "runuser", check: "openclaw_user", desc: "Fix OpenClaw user" },
-            { name: "runcode", check: "code_integrity", desc: "Fix code integrity" },
+            { name: "runcode", check: "code_execution_sandbox", desc: "Fix code integrity" },
             { name: "runtmp", check: "tmp_security", desc: "Fix tmp security" },
-            { name: "runenv", check: "session_token_security", desc: "Fix token security" },
-            { name: "runsandbox", check: "sandbox_security", desc: "Fix sandbox" },
-            { name: "runaudit", check: "audit_logging", desc: "Fix audit logging" },
-            { name: "runcore", check: "core_dumps", desc: "Fix core dumps" },
+            { name: "runenv", check: "env_leakage", desc: "Fix token security" },
+            { name: "runsandbox", check: "sandbox_mode", desc: "Fix sandbox" },
+            { name: "runaudit", check: "auditd_logging", desc: "Fix audit logging" },
+            { name: "runcore", check: "core_dump_protection", desc: "Fix core dumps" },
             { name: "runkernel", check: "kernel_hardening", desc: "Fix kernel" },
         ];
         for (const sc of sudoCmds) {
@@ -851,7 +851,7 @@ const lobsterguardPlugin = {
                 description: sc.desc + " (sudo)",
                 handler: async (ctx) => {
                     try {
-                        return { text: (0, child_process_1.execSync)(`sudo python3 -W ignore "${FIX_SCRIPT}" fix ${sc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 }) };
+                        return { text: (0, child_process_1.execSync)(`sudo python3 -W ignore "${FIX_SCRIPT}" plan ${sc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 }) };
                     } catch (err) {
                         return { text: "Error " + sc.name + ": " + (err.stdout || err.stderr || err.message || "unknown").substring(0, 500) };
                     }
@@ -883,7 +883,7 @@ const lobsterguardPlugin = {
             },
         });
 
-        api.logger.info(`LobsterGuard Shield v4.0.0 — registered: 5 tools + 6 CLI commands + 21 slash commands + ${interceptor_1.BUILTIN_PATTERN_COUNT} threat patterns + file watcher + auto-fix`);
+        api.logger.info(`LobsterGuard Shield v4.0.0 — registered: 4 tools + 22 slash commands + ${interceptor_1.BUILTIN_PATTERN_COUNT} threat patterns + file watcher + auto-fix`);
     },
 };
 // ─── Export ──────────────────────────────────────────────────────────────────

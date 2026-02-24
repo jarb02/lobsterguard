@@ -6553,20 +6553,24 @@ def format_compact(report):
     # Mapping from check IDs to Telegram fix commands
     FIX_COMMANDS = {
         "firewall": "/fixfw",
-        "backups": "/fixbackup", 
+        "backups": "/fixbackup",
+        "backup_config": "/fixbackup",
         "kernel_hardening": "/fixkernel",
         "core_dumps": "/fixcore",
+        "core_dump_protection": "/fixcore",
         "audit_logging": "/fixaudit",
+        "auditd_logging": "/fixaudit",
         "sandbox_mode": "/fixsandbox",
+        "code_execution_sandbox": "/fixsandbox",
         "session_token": "/fixenv",
+        "session_token_security": "/fixenv",
+        "env_leakage": "/fixenv",
         "tmp_security": "/fixtmp",
         "skill_integrity": "/fixcode",
-        "openclaw_user": "/runuser",
-        "backup_config": "/fixbackup",
-        "auditd_logging": "/fixaudit",
-        "code_execution_sandbox": "/fixsandbox",
-        "session_token_security": "/fixenv",
         "code_integrity": "/fixcode",
+        "openclaw_user": "/runuser",
+        "systemd_hardening": "/fixsandbox",
+        "incident_response": "/fixbackup",
     }
 
     lines = []
