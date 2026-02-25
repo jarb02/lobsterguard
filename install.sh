@@ -121,7 +121,7 @@ install_skill() {
     SKILL_DIR="$OPENCLAW_DIR/skills/lobsterguard"
     EXT_DIR="$OPENCLAW_DIR/extensions/lobsterguard-shield"
     mkdir -p "$SKILL_DIR/scripts" "$EXT_DIR/dist"
-    for f in check.py fix_engine.py skill_scanner.py autoscan.py quarantine_watcher.py; do
+    for f in check.py fix_engine.py skill_scanner.py autoscan.py quarantine_watcher.py cleanup.py; do
         [ -f "$SCRIPT_DIR/scripts/$f" ] && cp "$SCRIPT_DIR/scripts/$f" "$SKILL_DIR/scripts/"
     done
     log_ok "Scripts copiados"

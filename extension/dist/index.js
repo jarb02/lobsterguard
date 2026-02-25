@@ -23,6 +23,7 @@ const SCRIPTS_DIR = (0, path_1.join)(LOBSTERGUARD_DIR, "scripts");
 const DATA_DIR = (0, path_1.join)(LOBSTERGUARD_DIR, "data");
 const CHECK_SCRIPT = (0, path_1.join)(SCRIPTS_DIR, "check.py");
 const FIX_SCRIPT = (0, path_1.join)(SCRIPTS_DIR, "fix_engine.py");
+const CLEANUP_SCRIPT = (0, path_1.join)(SCRIPTS_DIR, "cleanup.py");
 const REPORT_TEXT = (0, path_1.join)(DATA_DIR, "latest-report.txt");
 const REPORT_JSON = (0, path_1.join)(DATA_DIR, "latest-report.json");
 const SHIELD_STATE_FILE = (0, path_1.join)(DATA_DIR, "shield-state.json");
@@ -883,7 +884,19 @@ const lobsterguardPlugin = {
             },
         });
 
-        api.logger.info(`LobsterGuard Shield v4.0.0 — registered: 4 tools + 22 slash commands + ${interceptor_1.BUILTIN_PATTERN_COUNT} threat patterns + file watcher + auto-fix`);
+        api.registerCommand({
+            name: "cleanup",
+            description: "Eliminar procesos fantasma de OpenClaw",
+            handler: async (ctx) => {
+                try {
+                    return { text: (0, child_process_1.execSync)(`python3 -u -W ignore "${CLEANUP_SCRIPT}" 2>&1`, { encoding: "utf-8", timeout: 30000 }) };
+                } catch (err) {
+                    return { text: "Error cleanup: " + (err.stdout || err.stderr || err.message || "unknown").substring(0, 500) };
+                }
+            },
+        });
+
+                api.logger.info(`LobsterGuard Shield v4.0.0 — registered: 4 tools + 23 slash commands + ${interceptor_1.BUILTIN_PATTERN_COUNT} threat patterns + file watcher + auto-fix`);
     },
 };
 // ─── Export ──────────────────────────────────────────────────────────────────
