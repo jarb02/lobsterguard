@@ -6495,7 +6495,7 @@ def generate_report():
 
 # ─── Pre-formatted Report ────────────────────────────────────────────────────
 
-def format_report_text(report):
+def format_report_text(report, lang="es"):
     """Generate a pre-formatted text report ready to display.
     This reduces API token usage by 80%+ since the bot just shows it."""
 
@@ -6504,15 +6504,16 @@ def format_report_text(report):
     fs = report["failure_summary"]
 
     # Header + Score
-    lines.append(f"🛡️ LobsterGuard v{report['version']} — Auditoría de Seguridad")
+    lines.append(f"🛡️ LobsterGuard v{report['version']} — {'Auditoría de Seguridad' if lang == 'es' else 'Security Audit'}")
     lines.append(f"📅 {report['timestamp'][:10]}")
     lines.append("")
-    lines.append(sv["score_text_es"])
-    lines.append(sv["bar_text_es"])
+    lines.append(sv[f"score_text_{lang}"])
+    lines.append(sv[f"bar_text_{lang}"])
     lines.append("")
 
     # Categories
-    for cat, val in sv["categories_es"].items():
+    cat_key = "categories_es" if lang == "es" else "categories_en"
+    for cat, val in sv[cat_key].items():
         lines.append(f"  {cat}: {val}")
     lines.append("")
 
@@ -6520,14 +6521,14 @@ def format_report_text(report):
     passed_checks = [c for c in report["checks"] if c["passed"]]
     failed_checks = [c for c in report["checks"] if not c["passed"]]
 
-    lines.append(f"✅ Checks que pasaron ({len(passed_checks)}/{fs['total_checks']}):")
+    lines.append(f"✅ {'Checks que pasaron' if lang == 'es' else 'Checks passed'} ({len(passed_checks)}/{fs['total_checks']}):")
     for c in passed_checks:
-        lines.append(f"  ✅ #{c['id']} {c['name_es']}")
+        lines.append(f"  ✅ #{c['id']} {c[f'name_{lang}']}")
     lines.append("")
 
     # Failed checks (detailed)
     if failed_checks:
-        lines.append(f"❌ Problemas encontrados ({fs['total_failed']}):")
+        lines.append(f"❌ {'Problemas encontrados' if lang == 'es' else 'Issues found'} ({fs['total_failed']}):")
         lines.append("")
 
         # Sort by severity: CRITICAL first, then HIGH, then MEDIUM
@@ -6536,24 +6537,25 @@ def format_report_text(report):
 
         for c in failed_sorted:
             sev_emoji = {"CRITICAL": "🔴", "HIGH": "🟠", "MEDIUM": "🟡"}.get(c["severity"], "⚪")
-            lines.append(f"  {sev_emoji} [{c['severity']}] {c['name_es']}")
-            lines.append(f"     {c['details_es']}")
-            if c.get("fix_es"):
-                fix_text = " → ".join(c["fix_es"]) if isinstance(c["fix_es"], list) else c["fix_es"]
+            lines.append(f"  {sev_emoji} [{c['severity']}] {c[f'name_{lang}']}")
+            lines.append(f"     {c[f'details_{lang}']}")
+            fix_key = f"fix_{lang}"
+            if c.get(fix_key):
+                fix_text = " → ".join(c[fix_key]) if isinstance(c[fix_key], list) else c[fix_key]
                 lines.append(f"     🔧 {fix_text}")
             lines.append("")
 
     # Priority actions
     critical_and_high = [c for c in failed_checks if c["severity"] in ("CRITICAL", "HIGH")]
     if critical_and_high:
-        lines.append("🔜 Acciones prioritarias:")
+        lines.append(f"🔜 {'Acciones prioritarias:' if lang == 'es' else 'Priority actions:'}")
         for i, c in enumerate(sorted(critical_and_high, key=lambda c: 0 if c["severity"] == "CRITICAL" else 1), 1):
             sev_emoji = "🔴" if c["severity"] == "CRITICAL" else "🟠"
-            lines.append(f"  {sev_emoji} {i}. {c['name_es']}")
+            lines.append(f"  {sev_emoji} {i}. {c[f'name_{lang}']}")
         lines.append("")
 
     # Summary
-    lines.append(report["summary"]["es"])
+    lines.append(report["summary"][lang])
 
     return "\n".join(lines)
 
@@ -6599,7 +6601,8 @@ def format_compact(report):
     lines.append("")
 
     # Categories (one line each)
-    for cat, val in sv["categories_es"].items():
+    cat_key = "categories_es" if lang == "es" else "categories_en"
+    for cat, val in sv[cat_key].items():
         lines.append(f"  {cat}: {val}")
 
     # If everything passed, short message
@@ -6670,8 +6673,18 @@ def format_compact(report):
 if __name__ == "__main__":
     report = generate_report()
 
-    # Check for flags
-    flag = sys.argv[1] if len(sys.argv) > 1 else ""
+    # Language detection
+    report_lang = "es"
+    for i, arg in enumerate(sys.argv):
+        if arg == "--lang" and i + 1 < len(sys.argv):
+            report_lang = sys.argv[i + 1] if sys.argv[i + 1] in ("es", "en") else "es"
+            break
+    else:
+        report_lang = detect_language()
+
+    # Check for flags (ignore --lang and its value)
+    flags = [a for a in sys.argv[1:] if a != "--lang" and a not in ("es", "en")]
+    flag = flags[0] if flags else ""
 
     if flag == "--json":
         print(json.dumps(report, indent=2, ensure_ascii=False))
@@ -6689,7 +6702,7 @@ if __name__ == "__main__":
             pass
     else:
         # Default: pre-formatted text report (saves API tokens)
-        print(format_report_text(report))
+        print(format_report_text(report, lang=report_lang))
         # Also print a small JSON summary at the end for the bot to parse if needed
         print("\n---JSON_SUMMARY---")
         mini = {

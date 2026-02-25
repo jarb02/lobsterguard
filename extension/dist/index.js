@@ -86,8 +86,8 @@ function isCacheRecent(maxAgeHours = 12) {
         return false;
     }
 }
-function runScan(format = "text") {
-    const flag = format === "json" ? " --json" : format === "compact" ? " --compact" : "";
+function runScan(format = "text", lang = "es") {
+    const flag = (format === "json" ? " --json" : format === "compact" ? " --compact" : "") + (lang ? ` --lang ${lang}` : "");
     try {
         const output = (0, child_process_1.execSync)(`python3 "${CHECK_SCRIPT}"${flag}`, {
             encoding: "utf-8",
@@ -339,13 +339,14 @@ const lobsterguardPlugin = {
             ],
             async execute(args) {
                 const format = args.format || "compact";
+                const lang = args.language || "es";
                 const forceFresh = args.force_fresh || false;
                 const state = loadShieldState();
                 api.logger.info(`security_scan called (format=${format}, force=${forceFresh})`);
                 // For compact format, always run fresh (it's fast and --compact saves cache internally)
                 if (format === "compact") {
                     api.logger.info("Running compact scan (only failures + score)...");
-                    const output = runScan("compact");
+                    const output = runScan("compact", lang);
                     state.last_scan_time = new Date().toISOString();
                     state.scan_count++;
                     const scoreMatch = output.match(/Score:\s*(\d+)\/100/);
@@ -381,11 +382,11 @@ const lobsterguardPlugin = {
                 }
                 // Run fresh scan
                 api.logger.info("Running fresh security scan...");
-                const output = runScan(format);
+                const output = runScan(format, lang);
                 // Save results to cache
                 try {
-                    const textOutput = format === "text" ? output : runScan("text");
-                    const jsonOutput = format === "json" ? output : runScan("json");
+                    const textOutput = format === "text" ? output : runScan("text", lang);
+                    const jsonOutput = format === "json" ? output : runScan("json", lang);
                     (0, fs_1.writeFileSync)(REPORT_TEXT, textOutput, "utf-8");
                     (0, fs_1.writeFileSync)(REPORT_JSON, jsonOutput, "utf-8");
                 }
@@ -522,7 +523,7 @@ const lobsterguardPlugin = {
                             }
                         }
                         console.log("(Running fresh scan — this may take a moment...)\n");
-                        const output = runScan(format);
+                        const output = runScan(format, lang);
                         console.log(output);
                         try {
                             if (format === "text") {
