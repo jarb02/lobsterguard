@@ -51,6 +51,25 @@ Plugin de seguridad para OpenClaw controlable desde Telegram. Escanea, detecta y
 | `/fixcode` | Restricciones de ejecución de código |
 | `/runuser` | Migra OpenClaw de root a usuario dedicado |
 
+
+## ⚠️ Importante: Aislamiento con Docker (Altamente Recomendado)
+
+LobsterGuard puede detectar y corregir la mayoría de problemas de seguridad automáticamente, pero **la mejora de seguridad más importante** que puedes hacer es ejecutar OpenClaw dentro de un contenedor Docker.
+
+Sin aislamiento de contenedor, OpenClaw corre directamente en tu sistema con acceso a todo — archivos, red, procesos y configuraciones del sistema. Si un skill malicioso o un ataque de prompt injection compromete OpenClaw, el atacante tiene acceso directo a tu servidor.
+
+Ejecutar OpenClaw en Docker proporciona:
+
+- **Aislamiento de archivos** — OpenClaw solo puede acceder a los volúmenes montados, no a todo tu sistema
+- **Aislamiento de red** — limita qué puertos y servicios puede alcanzar OpenClaw
+- **Aislamiento de procesos** — un contenedor comprometido no puede ver ni afectar procesos del host
+- **Límites de recursos** — evita abuso de CPU/memoria por procesos descontrolados
+- **Recuperación fácil** — destruye y recrea el contenedor sin afectar tu servidor
+
+Este es el único check en LobsterGuard que no tiene auto-fix porque requiere reestructurar cómo se despliega OpenClaw. Una guía paso a paso detallada está incluida en `docs/docker-setup-guide.md`.
+
+**Sin Docker, tu score de LobsterGuard está limitado a 95/100.** Con Docker, puedes alcanzar un 100/100 perfecto.
+
 ## Instalación
 
 ```bash
