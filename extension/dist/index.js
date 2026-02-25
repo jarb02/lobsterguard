@@ -810,19 +810,6 @@ const lobsterguardPlugin = {
             },
         });
 
-        api.registerCommand({
-            name: "runall",
-            description: "Arreglar automaticamente todos los problemas",
-            handler: async (ctx) => {
-                try {
-                    const wrapper = path_1.join(LOBSTERGUARD_DIR, "scripts", "runall_wrapper.sh");
-                    return { text: (0, child_process_1.execSync)(`bash "${wrapper}"`, { encoding: "utf-8", timeout: 120000 }) };
-                } catch (err) {
-                    return { text: "Error runall: " + (err.stdout || err.stderr || err.message || "unknown").substring(0, 500) };
-                }
-            },
-        });
-
         const fixCmds = [
             { name: "fixfw", check: "firewall", desc: "Configurar firewall" },
             { name: "fixbackup", check: "backups", desc: "Configurar backups" },
@@ -834,6 +821,7 @@ const lobsterguardPlugin = {
             { name: "fixtmp", check: "tmp_security", desc: "Proteger /tmp" },
             { name: "fixcode", check: "code_execution_sandbox", desc: "Verificar integridad" },
             { name: "fixsystemd", check: "systemd_hardening", desc: "Crear servicio systemd" },
+            { name: "runuser", check: "openclaw_user", desc: "Migrar de root a usuario dedicado" },
         ];
         for (const fc of fixCmds) {
             api.registerCommand({
@@ -850,33 +838,6 @@ const lobsterguardPlugin = {
                 },
             });
         }
-
-        const sudoCmds = [
-            { name: "runuser", check: "openclaw_user", desc: "Fix OpenClaw user" },
-            { name: "runcode", check: "code_execution_sandbox", desc: "Fix code integrity" },
-            { name: "runtmp", check: "tmp_security", desc: "Fix tmp security" },
-            { name: "runenv", check: "env_leakage", desc: "Fix token security" },
-            { name: "runsandbox", check: "sandbox_mode", desc: "Fix sandbox" },
-            { name: "runaudit", check: "auditd_logging", desc: "Fix audit logging" },
-            { name: "runcore", check: "core_dump_protection", desc: "Fix core dumps" },
-            { name: "runkernel", check: "kernel_hardening", desc: "Fix kernel" },
-        ];
-        for (const sc of sudoCmds) {
-            api.registerCommand({
-                name: sc.name,
-                description: sc.desc + " (sudo)",
-                handler: async (ctx) => {
-                    try {
-                        const sudoResult = (0, child_process_1.execSync)(`python3 -u -W ignore "${FIX_SCRIPT}" run ${sc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 });
-                        scheduleCleanup(3);
-                        return { text: sudoResult };
-                    } catch (err) {
-                        return { text: "Error " + sc.name + ": " + (err.stdout || err.stderr || err.message || "unknown").substring(0, 500) };
-                    }
-                },
-            });
-        }
-
         api.registerCommand({
             name: "checkskill",
             description: "Escanear seguridad de skills instaladas",

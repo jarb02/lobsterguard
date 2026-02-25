@@ -6668,9 +6668,7 @@ def format_compact(report, lang="es"):
                 lines.append(f"  {fix_cmd} — {desc}")
                 commands_shown.add(fix_cmd)
         
-        # Always show /runall option
-        if commands_shown:
-            lines.append(f"  /runall — Arreglar todo / Fix all")
+
 
     return "\n".join(lines)
 

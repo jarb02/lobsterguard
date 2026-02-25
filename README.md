@@ -7,7 +7,7 @@ Security plugin for OpenClaw controllable from Telegram. Scans, detects and fixe
 ## What it does
 
 - **68 security checks** across 6 categories
-- **13 auto-fixes** executable from Telegram
+- **12 auto-fixes** executable from Telegram
 - **Skill scanner** with 4-layer deep analysis
 - **Quarantine watcher** monitors suspicious skills 24/7
 - **Auto-scan every 6 hours** with Telegram alerts
@@ -50,7 +50,6 @@ Security plugin for OpenClaw controllable from Telegram. Scans, detects and fixe
 | `/fixtmp` | Clean and secure /tmp |
 | `/fixcode` | Code execution restrictions |
 | `/runuser` | Migrate OpenClaw from root to dedicated user |
-| `/runall` | Run all fixes at once |
 
 ## Installation
 
@@ -98,7 +97,7 @@ lobsterguard/
 │   └── lgsetup.py             # Setup assistant
 ├── extension/
 │   └── dist/
-│       ├── index.js           # OpenClaw plugin (24 commands)
+│       ├── index.js           # OpenClaw plugin (16 commands)
 │       ├── interceptor.js     # 31 threat patterns
 │       ├── watcher.js         # File watcher
 │       ├── fix_tool.js        # Remediation tool
