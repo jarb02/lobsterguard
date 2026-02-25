@@ -75,7 +75,7 @@ function registerFixTool(api, scriptsDir, logger) {
             {
                 name: "target_user",
                 type: "string",
-                description: "Target user for the fix (e.g., 'jose'). " +
+                description: "Target user for the fix (e.g., 'openclaw'). " +
                     "If not specified, auto-detected from current user.",
                 required: false,
                 default: "",

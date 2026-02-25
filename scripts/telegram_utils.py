@@ -15,7 +15,7 @@ def get_telegram_config():
     """Read Telegram bot token and chat_id from OpenClaw config files."""
     oc_home = Path(os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw")))
 
-    bot_token = ""
+    bot_token = None
     chat_id = ""
 
     # Bot token: from openclaw.json -> telegram.botToken

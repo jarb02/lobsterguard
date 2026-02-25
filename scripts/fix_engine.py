@@ -1131,7 +1131,8 @@ def plan_systemd_hardening(target_user="", lang="es"):
     except:
         pass
 
-    oc_user = "jose"
+    # Detect OpenClaw user dynamically
+    oc_user = os.environ.get("USER", "openclaw")
     try:
         result = subprocess.run("ps aux | grep openclaw-gateway | grep -v grep | head -1 | awk '{print $1}'",
                                 shell=True, capture_output=True, text=True)

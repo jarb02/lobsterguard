@@ -2058,7 +2058,7 @@ def check_system_users():
         "grep -E '/bin/(bash|sh|zsh|fish)$' /etc/passwd 2>/dev/null"
     )
 
-    expected_users = {"root", "ubuntu", "debian", "admin", "jose", "openclaw"}
+    expected_users = {"root", "ubuntu", "debian", "admin", "openclaw"}
     unexpected = []
 
     if stdout:
