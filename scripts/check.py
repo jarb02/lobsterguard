@@ -4200,38 +4200,67 @@ def check_code_execution_sandbox():
         result["details_en"] = "Sandbox issues: " + "; ".join(set(i["en"] for i in issues))
         result["details_es"] = "Problemas de sandbox: " + "; ".join(set(i["es"] for i in issues))
         result["fix_es"] = [
-            "Sin sandbox, codigo ejecutado podria comprometerlo todo.",
+            "POR QUE ES IMPORTANTE:",
+            "Si alguien logra ejecutar codigo malicioso a traves de OpenClaw,",
+            "sin sandbox tiene acceso COMPLETO a tu servidor: archivos, red,",
+            "bases de datos, todo. Un contenedor Docker lo encierra en una",
+            "caja donde aunque ejecute codigo, no puede salir al sistema real.",
             "",
-            "Paso 1 — Habilita AppArmor o SELinux:",
-            "  # Para AppArmor:",
-            "  sudo systemctl enable apparmor",
-            "  sudo aa-enforce /etc/apparmor.d/usr.local.bin.openclaw",
+            "SOLUCION RECOMENDADA - Docker (la mas segura y facil):",
             "",
-            "Paso 2 — Usa contenedores para aislamiento mas fuerte:",
-            "  docker run --rm -v ~/.openclaw:/root/.openclaw openclaw:latest",
+            "Paso 1 - Instala Docker si no lo tienes:",
+            "  curl -fsSL https://get.docker.com | sudo sh",
+            "  sudo usermod -aG docker $USER",
             "",
-            "Paso 3 — Configura seccomp en tu systemd service:",
-            "  SystemCallFilter=read write open close stat fstat lstat",
+            "Paso 2 - Crea un Dockerfile para OpenClaw:",
+            "  FROM node:20-slim",
+            "  RUN npm install -g openclaw",
+            "  COPY .openclaw /root/.openclaw",
+            "  EXPOSE 18789",
+            "  CMD [openclaw, start]",
             "",
-            "Paso 4 — Considera usar cgroups para limitar recursos:",
-            "  CPUQuota=50%",
+            "Paso 3 - Construye y ejecuta:",
+            "  docker build -t openclaw-secure .",
+            "  docker run -d --name openclaw \\",
+            "    --restart unless-stopped \\",
+            "    -p 18789:18789 \\",
+            "    -v ~/.openclaw:/root/.openclaw \\",
+            "    openclaw-secure",
+            "",
+            "Esto aisla OpenClaw en un contenedor con proteccion adicional.",
+            "Es la forma mas efectiva de proteger tu servidor.",
         ]
         result["fix_en"] = [
-            "Without sandbox, executed code could compromise everything.",
+            "WHY THIS MATTERS:",
+            "If someone manages to execute malicious code through OpenClaw,",
+            "without a sandbox they have FULL access to your server: files,",
+            "network, databases, everything. A Docker container locks them in",
+            "a box where even if they run code, they cannot escape to your real system.",
             "",
-            "Step 1 — Enable AppArmor or SELinux:",
-            "  # For AppArmor:",
-            "  sudo systemctl enable apparmor",
-            "  sudo aa-enforce /etc/apparmor.d/usr.local.bin.openclaw",
+            "RECOMMENDED SOLUTION - Docker (most secure and easy):",
             "",
-            "Step 2 — Use containers for stronger isolation:",
-            "  docker run --rm -v ~/.openclaw:/root/.openclaw openclaw:latest",
+            "Step 1 - Install Docker:",
+            "  curl -fsSL https://get.docker.com | sudo sh",
+            "  sudo usermod -aG docker $USER",
             "",
-            "Step 3 — Configure seccomp in your systemd service:",
-            "  SystemCallFilter=read write open close stat fstat lstat",
+            "Step 2 - Create a Dockerfile for OpenClaw:",
+            "  FROM node:20-slim",
+            "  RUN npm install -g openclaw",
+            "  COPY .openclaw /root/.openclaw",
+            "  EXPOSE 18789",
+            "  CMD [openclaw, start]",
             "",
-            "Step 4 — Consider using cgroups to limit resources:",
-            "  CPUQuota=50%",
+            "Step 3 - Build and run:",
+            "  docker build -t openclaw-secure .",
+            "  docker run -d --name openclaw \\",
+            "    --restart unless-stopped \\",
+            "    -p 18789:18789 \\",
+            "    -v ~/.openclaw:/root/.openclaw \\",
+            "    openclaw-secure",
+            "",
+            "This isolates OpenClaw in a container with additional protection.",
+            "It is the most effective way to protect your server.",
+            "",
         ]
 
     return result
@@ -6339,20 +6368,20 @@ def generate_report():
         check_cryptominer_detection(),
         check_rootkit_detection_basic(),
         check_dns_tunneling_detection(),
-        # Advanced Hardening checks (58-70)
+        # Advanced Hardening checks (58-68)
         check_websocket_security(),
         check_sudo_nopasswd_audit(),
         check_swap_encryption(),
         check_core_dump_protection(),
         check_conversation_log_security(),
-        check_skill_update_verification(),
+        # check_skill_update_verification(),  # Removed: covered by /checkskill and skill quarantine
         check_cross_agent_communication(),
         check_session_token_security(),
         check_filesystem_immutable_attributes(),
         check_usb_device_restrictions(),
         check_network_namespace_isolation(),
         check_auditd_logging(),
-        check_incident_response_readiness(),
+        # check_incident_response_readiness(),  # Removed: organizational, not technical
     ]
 
     report["checks"] = checks
@@ -6404,7 +6433,7 @@ def generate_report():
     advanced_checks = checks[15:28]
     agentic_checks = checks[28:50]
     forensic_checks = checks[50:57]
-    hardening_checks = checks[57:70]
+    hardening_checks = checks[57:68]
 
     openclaw_passed = sum(1 for c in openclaw_checks if c["passed"])
     server_passed = sum(1 for c in server_checks if c["passed"])
@@ -6426,7 +6455,7 @@ def generate_report():
             "Avanzado": f"{'✅' if advanced_passed == 13 else '⚠️'} {advanced_passed}/13 checks",
             "IA Agental": f"{'✅' if agentic_passed == 22 else '⚠️'} {agentic_passed}/22 checks",
             "Forense": f"{'✅' if forensic_passed == 7 else '⚠️'} {forensic_passed}/7 checks",
-            "Endurecimiento": f"{'✅' if hardening_passed == 13 else '⚠️'} {hardening_passed}/13 checks",
+            "Endurecimiento": f"{'✅' if hardening_passed == 11 else '⚠️'} {hardening_passed}/11 checks",
         },
         "categories_en": {
             "OpenClaw": f"{'✅' if openclaw_passed == 5 else '⚠️'} {openclaw_passed}/5 checks",
@@ -6434,7 +6463,7 @@ def generate_report():
             "Advanced": f"{'✅' if advanced_passed == 13 else '⚠️'} {advanced_passed}/13 checks",
             "Agentic AI": f"{'✅' if agentic_passed == 22 else '⚠️'} {agentic_passed}/22 checks",
             "Forensic": f"{'✅' if forensic_passed == 7 else '⚠️'} {forensic_passed}/7 checks",
-            "Hardening": f"{'✅' if hardening_passed == 13 else '⚠️'} {hardening_passed}/13 checks",
+            "Hardening": f"{'✅' if hardening_passed == 11 else '⚠️'} {hardening_passed}/11 checks",
         },
     }
 
@@ -6570,7 +6599,7 @@ def format_compact(report):
         "code_integrity": "/fixcode",
         "openclaw_user": "/runuser",
         "systemd_hardening": "/fixsandbox",
-        "incident_response": "/fixbackup",
+
     }
 
     lines = []

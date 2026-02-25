@@ -1120,53 +1120,159 @@ def plan_code_execution_sandbox(target_user="", lang="es"):
 
 
 def plan_systemd_hardening(target_user="", lang="es"):
-    """Plan function for systemd service hardening"""
+    """Plan function for systemd service hardening - creates service if needed"""
+    import subprocess
+
+    # Detect current OpenClaw binary and user
+    oc_bin = "/usr/bin/openclaw"
+    try:
+        result = subprocess.run("which openclaw", shell=True, capture_output=True, text=True)
+        if result.returncode == 0 and result.stdout.strip():
+            oc_bin = result.stdout.strip()
+    except:
+        pass
+
+    oc_user = "jose"
+    try:
+        result = subprocess.run("ps aux | grep openclaw-gateway | grep -v grep | head -1 | awk '{print $1}'",
+                                shell=True, capture_output=True, text=True)
+        if result.returncode == 0 and result.stdout.strip():
+            oc_user = result.stdout.strip()
+    except:
+        pass
+
+    if oc_user == "root":
+        oc_home = "/root"
+    else:
+        oc_home = f"/home/{oc_user}"
+
+    # Check if service already exists
+    has_service = False
+    try:
+        result = subprocess.run("systemctl show -p FragmentPath openclaw 2>/dev/null",
+                                shell=True, capture_output=True, text=True)
+        svc_path = result.stdout.split("=")[-1].strip() if "=" in result.stdout else ""
+        if svc_path and svc_path != "":
+            has_service = True
+    except:
+        pass
+
+    service_content = f"""[Unit]
+Description=OpenClaw Gateway
+After=network.target
+
+[Service]
+Type=simple
+User={oc_user}
+Group={oc_user}
+WorkingDirectory={oc_home}
+Environment=NODE_ENV=production
+Environment=HOME={oc_home}
+ExecStart={oc_bin} gateway --port 18789
+Restart=on-failure
+RestartSec=10
+KillMode=control-group
+
+# Security Hardening
+ProtectSystem=strict
+ProtectHome=read-only
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ReadWritePaths={oc_home}/.openclaw
+ReadWritePaths=/tmp
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
+"""
+
+    # Build the tee command with proper escaping
+    tee_cmd = f"echo '{service_content}' | sudo tee /etc/systemd/system/openclaw.service > /dev/null"
+
+    steps = []
+
+    if not has_service:
+        steps.append({
+            "id": 1,
+            "title_es": "Crear servicio systemd",
+            "title_en": "Create systemd service",
+            "description_es": "Crea el archivo de servicio con opciones de seguridad",
+            "description_en": "Create service file with security options",
+            "command": tee_cmd,
+            "validation": "test -f /etc/systemd/system/openclaw.service",
+            "rollback": "sudo rm -f /etc/systemd/system/openclaw.service",
+            "critical": True
+        })
+        steps.append({
+            "id": 2,
+            "title_es": "Recargar systemd",
+            "title_en": "Reload systemd",
+            "description_es": "Recarga la configuracion de systemd",
+            "description_en": "Reload systemd configuration",
+            "command": "sudo systemctl daemon-reload",
+            "validation": "sudo systemctl cat openclaw > /dev/null 2>&1",
+            "rollback": "true",
+            "critical": True
+        })
+        steps.append({
+            "id": 3,
+            "title_es": "Habilitar servicio",
+            "title_en": "Enable service",
+            "description_es": "Habilita el servicio para inicio automatico",
+            "description_en": "Enable service for automatic start",
+            "command": "sudo systemctl enable openclaw",
+            "validation": "sudo systemctl is-enabled openclaw | grep -q enabled",
+            "rollback": "sudo systemctl disable openclaw",
+            "critical": False
+        })
+    else:
+        steps.append({
+            "id": 1,
+            "title_es": "Respaldar servicio",
+            "title_en": "Backup service",
+            "description_es": "Respalda la configuracion actual",
+            "description_en": "Backup current configuration",
+            "command": "sudo cp /etc/systemd/system/openclaw.service /etc/systemd/system/openclaw.service.backup 2>/dev/null || echo backup-ok",
+            "validation": "true",
+            "rollback": "true",
+            "critical": False
+        })
+        steps.append({
+            "id": 2,
+            "title_es": "Agregar opciones de seguridad",
+            "title_en": "Add security options",
+            "description_es": "Agrega directivas de hardening al servicio",
+            "description_en": "Add hardening directives to service",
+            "command": "sudo mkdir -p /etc/systemd/system/openclaw.service.d && echo '[Service]\nProtectSystem=strict\nProtectHome=read-only\nNoNewPrivileges=yes\nPrivateDevices=yes\nPrivateTmp=yes\nReadWritePaths=" + oc_home + "/.openclaw\nUMask=0077' | sudo tee /etc/systemd/system/openclaw.service.d/hardening.conf > /dev/null",
+            "validation": "test -f /etc/systemd/system/openclaw.service.d/hardening.conf",
+            "rollback": "sudo rm -f /etc/systemd/system/openclaw.service.d/hardening.conf",
+            "critical": True
+        })
+        steps.append({
+            "id": 3,
+            "title_es": "Recargar systemd",
+            "title_en": "Reload systemd",
+            "description_es": "Recarga la configuracion de systemd",
+            "description_en": "Reload systemd configuration",
+            "command": "sudo systemctl daemon-reload",
+            "validation": "true",
+            "rollback": "true",
+            "critical": False
+        })
+
     plan = {
         "success": True,
         "check_id": "systemd_hardening",
         "title_es": "Endurecimiento de Systemd",
         "title_en": "Systemd Hardening",
-        "description_es": "Aplica configuraciones de seguridad en systemd",
-        "description_en": "Apply security configurations to systemd",
-        "estimated_time_es": "10 minutos",
-        "estimated_time_en": "10 minutes",
+        "description_es": "Crea/configura servicio systemd con opciones de seguridad",
+        "description_en": "Create/configure systemd service with security options",
+        "estimated_time_es": "2 minutos",
+        "estimated_time_en": "2 minutes",
         "requires_sudo": True,
-        "total_steps": 3,
-        "steps": [
-            {
-                "id": 1,
-                "title_es": "Respaldar servicio",
-                "title_en": "Backup service",
-                "description_es": "Respalda la configuración del servicio openclaw",
-                "description_en": "Backup openclaw service configuration",
-                "command": "sudo cp /etc/systemd/system/openclaw.service /etc/systemd/system/openclaw.service.backup 2>/dev/null || echo 'No existing service'",
-                "validation": "true",
-                "rollback": "sudo mv /etc/systemd/system/openclaw.service.backup /etc/systemd/system/openclaw.service || true",
-                "critical": False
-            },
-            {
-                "id": 2,
-                "title_es": "Agregar opciones de seguridad",
-                "title_en": "Add security options",
-                "description_es": "Agrega ProtectSystem, ProtectHome, NoNewPrivileges",
-                "description_en": "Add ProtectSystem, ProtectHome, NoNewPrivileges",
-                "command": "sudo mkdir -p /etc/systemd/system/openclaw.service.d && sudo tee /etc/systemd/system/openclaw.service.d/hardening.conf > /dev/null << 'EOF'\n[Service]\nProtectSystem=strict\nProtectHome=yes\nNoNewPrivileges=yes\nPrivateDevices=yes\nPrivateTmp=yes\nUMask=0077\nEOF",
-                "validation": "test -f /etc/systemd/system/openclaw.service.d/hardening.conf",
-                "rollback": "sudo rm /etc/systemd/system/openclaw.service.d/hardening.conf",
-                "critical": True
-            },
-            {
-                "id": 3,
-                "title_es": "Recargar y reiniciar",
-                "title_en": "Reload and restart",
-                "description_es": "Recarga systemd e reinicia el servicio",
-                "description_en": "Reload systemd and restart service",
-                "command": "sudo systemctl daemon-reload && sudo systemctl restart openclaw",
-                "validation": "sudo systemctl is-active openclaw | grep active",
-                "rollback": "sudo systemctl daemon-reload && sudo systemctl restart openclaw",
-                "critical": True
-            }
-        ]
+        "total_steps": len(steps),
+        "steps": steps
     }
 
     state = load_fix_state()
