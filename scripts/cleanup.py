@@ -35,10 +35,11 @@ def get_ppid(pid):
     except:
         return -1
 
-def main():
+def main(silent=False):
     before = get_processes()
     if not before:
-        print("✅ No hay procesos OpenClaw corriendo")
+        if not silent:
+            print("✅ No hay procesos OpenClaw corriendo")
         return
 
     # Find gateway PID (the main process)
@@ -83,14 +84,19 @@ def main():
         time.sleep(1)
 
     after = get_processes()
-    print(f"🧹 Limpieza completada")
-    print(f"Antes: {len(before)} procesos")
-    print(f"Ahora: {len(after)} procesos")
-    print(f"Eliminados: {killed} procesos fantasma")
-    if len(after) <= 3:
+    if not silent:
+        print(f"🧹 Limpieza completada")
+    if not silent:
+        print(f"Antes: {len(before)} procesos")
+    if not silent:
+        print(f"Ahora: {len(after)} procesos")
+    if not silent:
+        print(f"Eliminados: {killed} procesos fantasma")
+    if not silent and len(after) <= 3:
         print(f"✅ Sistema limpio")
-    else:
+    elif not silent:
         print(f"⚠️ Aun quedan {len(after)} procesos (gateway + hijos directos)")
 
 if __name__ == "__main__":
-    main()
+    silent = "--silent" in sys.argv
+    main(silent=silent)

@@ -157,6 +157,19 @@ setup_backup_dir() {
     fi
 }
 
+setup_auto_cleanup() {
+    log_info "Configurando limpieza automatica..."
+    CLEANUP_PATH="$SKILL_DIR/scripts/cleanup.py"
+    CRON_LINE="*/5 * * * * /usr/bin/python3 $CLEANUP_PATH --silent 2>/dev/null"
+    # Check if cron already exists
+    if su - "$OC_USER" -c "crontab -l 2>/dev/null" | grep -q "cleanup.py"; then
+        log_ok "Cron de limpieza ya configurado"
+    else
+        su - "$OC_USER" -c "(crontab -l 2>/dev/null; echo '$CRON_LINE') | crontab -"
+        log_ok "Cron de limpieza cada 5 minutos configurado"
+    fi
+}
+
 verify_install() {
     log_info "Verificando instalacion..."
     ERRORS=0
@@ -205,6 +218,11 @@ uninstall() {
     [ -d "$SKILL_DIR" ] && rm -rf "$SKILL_DIR" && log_ok "Skill eliminado"
     [ -d "$EXT_DIR" ] && rm -rf "$EXT_DIR" && log_ok "Extension eliminada"
     [ -f "/etc/sudoers.d/lobsterguard" ] && rm -f "/etc/sudoers.d/lobsterguard" && log_ok "Sudoers eliminado"
+    # Remove cleanup cron
+    if su - "" -c "crontab -l 2>/dev/null" | grep -q "cleanup.py"; then
+        su - "" -c "crontab -l 2>/dev/null | grep -v cleanup.py | crontab -"
+        log_ok "Cron de limpieza eliminado"
+    fi
     printf "\n"
     log_ok "LobsterGuard desinstalado completamente"
     printf "  ${BLUE}Reinicia OpenClaw para aplicar cambios${NC}\n\n"
@@ -223,6 +241,7 @@ main() {
     setup_sudoers
     install_skill
     setup_backup_dir
+    setup_auto_cleanup
     printf "\n"
     verify_install || true
     printf "\n"

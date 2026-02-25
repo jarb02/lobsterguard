@@ -24,6 +24,15 @@ const DATA_DIR = (0, path_1.join)(LOBSTERGUARD_DIR, "data");
 const CHECK_SCRIPT = (0, path_1.join)(SCRIPTS_DIR, "check.py");
 const FIX_SCRIPT = (0, path_1.join)(SCRIPTS_DIR, "fix_engine.py");
 const CLEANUP_SCRIPT = (0, path_1.join)(SCRIPTS_DIR, "cleanup.py");
+
+        // Auto-cleanup: runs cleanup.py after a delay to kill orphan processes
+        function scheduleCleanup(delaySec) {
+            setTimeout(() => {
+                try {
+                    (0, child_process_1.execSync)(`python3 -u -W ignore "${CLEANUP_SCRIPT}" --silent 2>/dev/null`, { encoding: "utf-8", timeout: 15000 });
+                } catch (e) { /* silent */ }
+            }, (delaySec || 5) * 1000);
+        }
 const REPORT_TEXT = (0, path_1.join)(DATA_DIR, "latest-report.txt");
 const REPORT_JSON = (0, path_1.join)(DATA_DIR, "latest-report.json");
 const SHIELD_STATE_FILE = (0, path_1.join)(DATA_DIR, "shield-state.json");
@@ -779,7 +788,9 @@ const lobsterguardPlugin = {
             description: "Escaneo de seguridad completo",
             handler: async (ctx) => {
                 try {
-                    return { text: (0, child_process_1.execSync)(`python3 -W ignore "${CHECK_SCRIPT}" --compact`, { encoding: "utf-8", timeout: 300000 }) };
+                    const scanResult = (0, child_process_1.execSync)(`python3 -W ignore "${CHECK_SCRIPT}" --compact`, { encoding: "utf-8", timeout: 300000 });
+                    scheduleCleanup(3);
+                    return { text: scanResult };
                 } catch (err) {
                     return { text: "Error scan: " + (err.stdout || err.stderr || err.message || "unknown").substring(0, 500) };
                 }
@@ -828,7 +839,9 @@ const lobsterguardPlugin = {
                 description: fc.desc,
                 handler: async (ctx) => {
                     try {
-                        return { text: (0, child_process_1.execSync)(`python3 -u -W ignore "${FIX_SCRIPT}" run ${fc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 }) };
+                        const fixResult = (0, child_process_1.execSync)(`python3 -u -W ignore "${FIX_SCRIPT}" run ${fc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 });
+                        scheduleCleanup(3);
+                        return { text: fixResult };
                     } catch (err) {
                         return { text: "Error " + fc.name + ": " + (err.stdout || err.stderr || err.message || "unknown").substring(0, 500) };
                     }
@@ -852,7 +865,9 @@ const lobsterguardPlugin = {
                 description: sc.desc + " (sudo)",
                 handler: async (ctx) => {
                     try {
-                        return { text: (0, child_process_1.execSync)(`python3 -u -W ignore "${FIX_SCRIPT}" run ${sc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 }) };
+                        const sudoResult = (0, child_process_1.execSync)(`python3 -u -W ignore "${FIX_SCRIPT}" run ${sc.check} --telegram 2>&1`, { encoding: "utf-8", timeout: 120000 });
+                        scheduleCleanup(3);
+                        return { text: sudoResult };
                     } catch (err) {
                         return { text: "Error " + sc.name + ": " + (err.stdout || err.stderr || err.message || "unknown").substring(0, 500) };
                     }
@@ -865,7 +880,9 @@ const lobsterguardPlugin = {
             description: "Escanear seguridad de skills instaladas",
             handler: async (ctx) => {
                 try {
-                    return { text: (0, child_process_1.execSync)(`python3 -W ignore "${SKILL_SCANNER}" all --telegram 2>&1`, { encoding: "utf-8", timeout: 60000 }) };
+                    const skillResult = (0, child_process_1.execSync)(`python3 -W ignore "${SKILL_SCANNER}" all --telegram 2>&1`, { encoding: "utf-8", timeout: 60000 });
+                    scheduleCleanup(3);
+                    return { text: skillResult };
                 } catch (err) {
                     return { text: "Error checkskill: " + (err.stdout || err.stderr || err.message || "unknown").substring(0, 500) };
                 }
