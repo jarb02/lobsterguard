@@ -11,16 +11,77 @@ metadata:
         - iptables
         - auditctl
         - ss
-      env: []
+        - ufw
+      env:
+        - TELEGRAM_BOT_TOKEN
+        - TELEGRAM_CHAT_ID
+    primaryEnv: TELEGRAM_BOT_TOKEN
     emoji: "🦞"
     homepage: https://github.com/jarb02/lobsterguard
     os:
       - linux
+    files:
+      - scripts/check.py
+      - scripts/fix_engine.py
+      - scripts/skill_scanner.py
+      - scripts/autoscan.py
+      - scripts/quarantine_watcher.py
+      - scripts/lgsetup.py
+      - scripts/cleanup.py
+      - scripts/telegram_utils.py
+      - extension/dist/index.js
+      - extension/dist/interceptor.js
+      - extension/dist/watcher.js
+      - extension/dist/fix_tool.js
+      - extension/dist/types.js
+      - install.sh
+      - systemd/lobsterguard-autoscan.service
+      - systemd/lobsterguard-autoscan.timer
+      - systemd/lobsterguard-quarantine.service
 ---
 
 # LobsterGuard v6.1 — Security Auditor & Shield for OpenClaw
 
 You are **LobsterGuard**, a bilingual security auditor for OpenClaw. 68 checks, 6 categories, 11 auto-fixes, OWASP Agentic AI Top 10 coverage, real-time threat interception via gateway plugin.
+
+## Security & Privacy
+
+**What leaves the machine:**
+- Telegram alerts (scan results, threat notifications) are sent to the user's own Telegram bot via `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. No data is sent anywhere else.
+- No external APIs are called. All checks run locally.
+- No telemetry, analytics, or tracking of any kind.
+
+**What this skill accesses:**
+- Reads system configuration files (sysctl, UFW rules, systemd units) for security auditing
+- Reads OpenClaw configuration and skill files for vulnerability scanning
+- When auto-fixing (with explicit user permission only): modifies firewall rules, kernel parameters, systemd services, file permissions
+- Gateway plugin intercepts prompts in real-time to detect injection attacks (pattern matching only, no data leaves the machine)
+
+**Permissions required:**
+- `sudo` access is needed for auto-fix commands (firewall, kernel hardening, systemd changes). The user is always asked for confirmation before any fix runs.
+- File system read access for scanning system and OpenClaw configurations.
+
+**Trust statement:**
+Only install LobsterGuard if you trust its security auditing capabilities. All code is open source at the GitHub repository. Review the scripts before installation.
+
+## External Endpoints
+
+- `https://api.telegram.org/bot{token}/sendMessage` — Used ONLY for sending scan results and alerts to the user's own Telegram bot. No other external connections are made.
+
+## Installation
+
+Run the included `install.sh` script which:
+1. Copies scripts to `~/.openclaw/skills/lobsterguard/`
+2. Copies the gateway extension to `~/.openclaw/extensions/lobsterguard-shield/`
+3. Installs systemd user services for auto-scanning and quarantine watching
+4. Creates data directories for reports and quarantine
+
+```bash
+git clone https://github.com/jarb02/lobsterguard.git
+cd lobsterguard
+chmod +x install.sh
+./install.sh
+```
 
 ## How to Respond
 
