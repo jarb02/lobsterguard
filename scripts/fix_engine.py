@@ -624,7 +624,7 @@ def plan_firewall(target_user="", lang="es"):
                 "description_es": "Instala Uncomplicated Firewall",
                 "description_en": "Install Uncomplicated Firewall",
                 "command": "apt-get update && apt-get install -y ufw",
-                "validation": "which ufw",
+                "validation": "test -x /usr/sbin/ufw",
                 "rollback": "apt-get remove -y ufw",
                 "critical": True
             },
@@ -857,7 +857,7 @@ def plan_auditd_logging(target_user="", lang="es"):
                 "description_es": "Instala el servicio de auditoría",
                 "description_en": "Install audit service",
                 "command": "sudo apt-get update && sudo apt-get install -y auditd audispd-plugins",
-                "validation": "which auditd",
+                "validation": "test -x /usr/sbin/auditd",
                 "rollback": "sudo apt-get remove -y auditd audispd-plugins",
                 "critical": True
             },
@@ -1561,13 +1561,24 @@ def run_fix(check_id, target_user="", lang="es"):
         lines.append(f"\u23f3 Paso {step_id}/{total}: {step_title}...")
 
         try:
-            # Add sudo if plan requires it (skip for commands that dont need it)
-            no_sudo_cmds = ("which ", "test ", "echo ", "echo''", "true", "grep ", "cat ", "ls ", "crontab ", "mkdir -p ~", "cp ~", "cat > ~", "chmod ")
-            needs_sudo = plan.get("requires_sudo") and not cmd.startswith("sudo") and not any(cmd.startswith(c) for c in no_sudo_cmds)
-            exec_cmd = f"sudo {cmd}" if needs_sudo else cmd
-            exec_validation = validation
-            if plan.get("requires_sudo") and validation and validation != "true" and not validation.startswith("sudo") and not any(validation.startswith(c) for c in no_sudo_cmds):
-                exec_validation = f"sudo {validation}"
+            # Add sudo to commands that need it, handling && chains
+            no_sudo_cmds = ("which ", "test ", "echo ", "true", "grep ", "cat ", "ls ", "crontab ", "mkdir -p ~", "cp ~", "cat > ~", "chmod ", "command -v ")
+
+            def add_sudo_smart(c):
+                if not plan.get("requires_sudo"):
+                    return c
+                parts = c.split(" && ")
+                result_parts = []
+                for p in parts:
+                    p = p.strip()
+                    if p.startswith("sudo ") or any(p.startswith(x) for x in no_sudo_cmds):
+                        result_parts.append(p)
+                    else:
+                        result_parts.append(f"sudo {p}")
+                return " && ".join(result_parts)
+
+            exec_cmd = add_sudo_smart(cmd)
+            exec_validation = add_sudo_smart(validation) if validation and validation != "true" else validation
             result = run_command(exec_cmd, timeout=60)
             stdout, stderr, rc = result
 
