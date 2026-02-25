@@ -832,6 +832,7 @@ const lobsterguardPlugin = {
             { name: "fixenv", check: "env_leakage", desc: "Proteger tokens" },
             { name: "fixtmp", check: "tmp_security", desc: "Proteger /tmp" },
             { name: "fixcode", check: "code_execution_sandbox", desc: "Verificar integridad" },
+            { name: "fixsystemd", check: "systemd_hardening", desc: "Crear servicio systemd" },
         ];
         for (const fc of fixCmds) {
             api.registerCommand({
