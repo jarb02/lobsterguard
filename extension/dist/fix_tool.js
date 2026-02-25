@@ -14,6 +14,17 @@ const path_1 = require("path");
  * @param scriptsDir - Path to the LobsterGuard scripts directory
  * @param logger - Logging function
  */
+
+// ─── Input Sanitization (VULN-1 fix) ─────────────────────────────────────────
+function sanitizeInput(str) {
+    if (!str || typeof str !== "string") return "";
+    // Only allow alphanumeric, underscore, hyphen
+    if (!/^[a-zA-Z0-9_-]+$/.test(str)) {
+        throw new Error(`Invalid input detected: "${str.substring(0, 30)}..." — only [a-zA-Z0-9_-] allowed`);
+    }
+    return str;
+}
+
 function registerFixTool(api, scriptsDir, logger) {
     const FIX_ENGINE = (0, path_1.join)(scriptsDir, "fix_engine.py");
     function runFixEngine(args) {
@@ -91,10 +102,10 @@ function registerFixTool(api, scriptsDir, logger) {
         ],
         async execute(args) {
             const action = args.action;
-            const checkId = args.check_id || "";
+            const checkId = sanitizeInput(args.check_id || "");
             const stepId = args.step_id || 0;
-            const targetUser = args.target_user || "";
-            const lang = args.language || "es";
+            const targetUser = sanitizeInput(args.target_user || "");
+            const lang = sanitizeInput(args.language || "es");
             logger("info", `security_fix called: action=${action}, check=${checkId}, step=${stepId}`);
             switch (action) {
                 case "list": {

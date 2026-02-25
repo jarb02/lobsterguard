@@ -411,6 +411,14 @@ class FileWatcher {
             this.logFn("warn", "Monitor script not found — cannot trigger alert");
             return;
         }
+        // VULN-6 fix: Validate monitor script is inside LobsterGuard directory
+        const path = require("path");
+        const resolvedPath = path.resolve(this.config.monitor_script_path);
+        const allowedBase = path.resolve(path.join(process.env.HOME || "", ".openclaw", "skills", "lobsterguard"));
+        if (!resolvedPath.startsWith(allowedBase)) {
+            this.logFn("error", `BLOCKED: Monitor script outside LobsterGuard directory: ${resolvedPath}`);
+            return;
+        }
         try {
             this.logFn("warn", `Triggering monitor due to: ${event.description_en}`);
             (0, child_process_1.execSync)(`bash "${this.config.monitor_script_path}" 2>&1`, {

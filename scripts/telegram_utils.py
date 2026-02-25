@@ -50,8 +50,27 @@ def get_telegram_config():
     return bot_token, chat_id
 
 
+def _verify_caller():
+    """VULN-4 fix: Verify caller is from LobsterGuard directory."""
+    import inspect
+    import os
+    allowed_dirs = [
+        os.path.expanduser("~/.openclaw/skills/lobsterguard"),
+        os.path.expanduser("~/lobsterguard-build"),
+    ]
+    frame = inspect.stack()
+    for f in frame:
+        caller_file = os.path.abspath(f.filename)
+        for allowed in allowed_dirs:
+            if caller_file.startswith(os.path.abspath(allowed)):
+                return True
+    return False
+
+
 def send_telegram(text, bot_token=None, chat_id=None):
     """Send a message via Telegram Bot API."""
+    if not _verify_caller():
+        return False  # Reject calls from outside LobsterGuard
     if not bot_token or not chat_id:
         bot_token, chat_id = get_telegram_config()
     if not bot_token or not chat_id:

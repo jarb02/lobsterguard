@@ -46,6 +46,14 @@ const DEFAULT_CONFIG = {
     report_cache_path: REPORT_TEXT,
 };
 // ─── Helper functions ────────────────────────────────────────────────────────
+// ─── Input Sanitization (VULN-1 fix) ─────────────────────────────────────────
+function sanitizeInput(str) {
+    if (!str || typeof str !== "string") return "";
+    if (!/^[a-zA-Z0-9_-]+$/.test(str)) {
+        throw new Error("Invalid input: " + str.substring(0, 30));
+    }
+    return str;
+}
 function loadShieldState() {
     try {
         if ((0, fs_1.existsSync)(SHIELD_STATE_FILE)) {
@@ -87,7 +95,10 @@ function isCacheRecent(maxAgeHours = 12) {
     }
 }
 function runScan(format = "text", lang = "es") {
-    const flag = (format === "json" ? " --json" : format === "compact" ? " --compact" : "") + (lang ? ` --lang ${lang}` : "");
+    // Sanitize inputs
+    const safeFormat = sanitizeInput(format || "text");
+    const safeLang = sanitizeInput(lang || "es");
+    const flag = (safeFormat === "json" ? " --json" : safeFormat === "compact" ? " --compact" : "") + (safeLang ? ` --lang ${safeLang}` : "");
     try {
         const output = (0, child_process_1.execSync)(`python3 "${CHECK_SCRIPT}"${flag}`, {
             encoding: "utf-8",
@@ -645,7 +656,11 @@ const lobsterguardPlugin = {
                                 catch {
                                     return "";
                                 } })();
-                                (0, child_process_1.execSync)(`echo '${existing}${cronLine}\n' | crontab -`, { encoding: "utf-8" });
+                                // VULN-3 fix: use tmpfile instead of string interpolation
+                                const tmpCron = require("os").tmpdir() + "/lg-crontab-" + process.pid;
+                                require("fs").writeFileSync(tmpCron, existing + cronLine + "\n");
+                                (0, child_process_1.execSync)("crontab " + tmpCron, { encoding: "utf-8" });
+                                try { require("fs").unlinkSync(tmpCron); } catch {}
                                 console.log("✅ Monitoring enabled (scan every 6h + alerts)");
                             }
                             catch (err) {

@@ -569,7 +569,21 @@ class ActionInterceptor {
         try {
             if ((0, fs_1.existsSync)(this.rulesFile)) {
                 const data = JSON.parse((0, fs_1.readFileSync)(this.rulesFile, "utf-8"));
-                return Array.isArray(data) ? data : [];
+                if (!Array.isArray(data)) return [];
+                // VULN-5 fix: Only allow "block" or "warn" actions, never whitelist
+                const validActions = new Set(["block", "warn"]);
+                const validated = data.filter(rule => {
+                    if (!rule.action || !validActions.has(rule.action)) {
+                        this.logFn("warn", `Rejected custom rule with invalid action: ${rule.action || "undefined"} (id: ${rule.id || "unknown"})`);
+                        return false;
+                    }
+                    if (!rule.pattern || typeof rule.pattern !== "string") {
+                        this.logFn("warn", `Rejected custom rule with missing/invalid pattern (id: ${rule.id || "unknown"})`);
+                        return false;
+                    }
+                    return true;
+                });
+                return validated;
             }
         }
         catch { /* no custom rules */ }
