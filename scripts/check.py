@@ -6680,7 +6680,7 @@ if __name__ == "__main__":
             report_lang = sys.argv[i + 1] if sys.argv[i + 1] in ("es", "en") else "es"
             break
     else:
-        report_lang = detect_language()
+        report_lang = "es"
 
     # Check for flags (ignore --lang and its value)
     flags = [a for a in sys.argv[1:] if a != "--lang" and a not in ("es", "en")]
