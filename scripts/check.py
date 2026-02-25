@@ -97,9 +97,19 @@ def read_json_safe(path):
 
 
 def detect_language():
-    """Detect system language for default report language."""
-    lang = os.environ.get("LANG", "en_US.UTF-8")
-    return "es" if lang.startswith("es") else "en"
+    """Read language preference from config.json, fallback to 'es'."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(script_dir, "..", "data", "config.json")
+    try:
+        with open(config_path) as f:
+            import json
+            config = json.load(f)
+            lang = config.get("language", "es")
+            if lang in ("es", "en"):
+                return lang
+    except Exception:
+        pass
+    return "es"
 
 
 # ─── SecureClaw Integration ──────────────────────────────────────────────────
@@ -6674,13 +6684,13 @@ if __name__ == "__main__":
     report = generate_report()
 
     # Language detection
-    report_lang = "es"
+    report_lang = detect_language()
     for i, arg in enumerate(sys.argv):
         if arg == "--lang" and i + 1 < len(sys.argv):
             report_lang = sys.argv[i + 1] if sys.argv[i + 1] in ("es", "en") else "es"
             break
     else:
-        report_lang = "es"
+        report_lang = detect_language()
 
     # Check for flags (ignore --lang and its value)
     flags = [a for a in sys.argv[1:] if a != "--lang" and a not in ("es", "en")]

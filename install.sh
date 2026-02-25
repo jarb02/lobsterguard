@@ -38,6 +38,39 @@ check_root() {
     fi
 }
 
+
+select_language() {
+    printf "\n"
+    printf "  ${BLUE}🌐 Select language / Seleccione idioma:${NC}\n"
+    printf "\n"
+    printf "    1) Español\n"
+    printf "    2) English\n"
+    printf "\n"
+    printf "  > "
+    read -r LANG_CHOICE
+    case "$LANG_CHOICE" in
+        2|en|EN|english|English) INSTALL_LANG="en" ;;
+        *) INSTALL_LANG="es" ;;
+    esac
+    if [ "$INSTALL_LANG" = "es" ]; then
+        log_ok "Idioma seleccionado: Español"
+    else
+        log_ok "Language selected: English"
+    fi
+}
+
+save_config() {
+    CONFIG_DIR="$SKILL_DIR/data"
+    mkdir -p "$CONFIG_DIR"
+    cat > "$CONFIG_DIR/config.json" << CFGEOF
+{
+    "language": "$INSTALL_LANG"
+}
+CFGEOF
+    chown -R "$OC_USER:$OC_USER" "$CONFIG_DIR"
+    log_ok "Configuracion guardada"
+}
+
 check_openclaw() {
     OC_USER="$(ps aux | grep -i 'openclaw' | grep -v grep | head -1 | awk '{print $1}')"
     if [ -z "$OC_USER" ]; then
@@ -237,9 +270,11 @@ main() {
     fi
     printf "  ${BLUE}Iniciando instalacion...${NC}\n\n"
     check_openclaw
+    select_language
     install_deps
     setup_sudoers
     install_skill
+    save_config
     setup_backup_dir
     setup_auto_cleanup
     printf "\n"
