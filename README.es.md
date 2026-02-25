@@ -1,4 +1,4 @@
-# LobsterGuard v6.0 — Auditor de Seguridad para OpenClaw
+# LobsterGuard v6.1 — Auditor de Seguridad para OpenClaw
 
 > **[Read in English](README.md)**
 
@@ -6,12 +6,15 @@ Plugin de seguridad para OpenClaw controlable desde Telegram. Escanea, detecta y
 
 ## Qué hace
 
-- **70 checks de seguridad** en 6 categorías
-- **12 auto-fixes** ejecutables desde Telegram
+- **68 checks de seguridad** en 6 categorías
+- **13 auto-fixes** ejecutables desde Telegram
 - **Scanner de skills** con 4 capas de análisis
 - **Quarantine watcher** que vigila skills sospechosas 24/7
 - **Auto-scan cada 6 horas** con alertas por Telegram
 - **31 patrones de amenazas** en tiempo real
+- **Limpieza automática de procesos fantasma** (post-comando + cron)
+- **Bilingüe** (Español / English) — idioma seleccionado durante la instalación
+- **Auto-detecta credenciales de Telegram** desde la configuración de OpenClaw
 
 ## Categorías de Checks
 
@@ -22,7 +25,7 @@ Plugin de seguridad para OpenClaw controlable desde Telegram. Escanea, detecta y
 | Avanzado | 13 | Permisos, SSL, backups, supply chain, CORS, sandbox |
 | IA Agental | 22 | Prompt injection, exfiltración, MCP, typosquatting, memoria |
 | Forense | 7 | Rootkits, reverse shells, cryptominers, DNS tunneling |
-| Endurecimiento | 13 | Kernel, systemd, auditd, core dumps, swap, namespaces |
+| Endurecimiento | 11 | Kernel, systemd, auditd, core dumps, swap, namespaces |
 
 ## Comandos de Telegram
 
@@ -30,7 +33,8 @@ Plugin de seguridad para OpenClaw controlable desde Telegram. Escanea, detecta y
 - `/scan` — Escaneo completo con score 0-100
 - `/checkskill [nombre|all]` — Escanea skills con 4 capas de análisis
 - `/lgsetup` — Verifica que LobsterGuard esté bien instalado
-- `/fixlist` — Lista los 12 fixes disponibles
+- `/fixlist` — Lista todos los fixes disponibles
+- `/cleanup` — Elimina procesos fantasma de OpenClaw
 
 ### Auto-fixes
 | Comando | Qué arregla |
@@ -41,6 +45,7 @@ Plugin de seguridad para OpenClaw controlable desde Telegram. Escanea, detecta y
 | `/fixcore` | Deshabilita core dumps |
 | `/fixaudit` | Instala y configura auditd |
 | `/fixsandbox` | Configura sandbox y permisos |
+| `/fixsystemd` | Crea/endurece servicio systemd para OpenClaw |
 | `/fixenv` | Protege variables de entorno con secrets |
 | `/fixtmp` | Limpia y asegura /tmp |
 | `/fixcode` | Restricciones de ejecución de código |
@@ -52,42 +57,54 @@ Plugin de seguridad para OpenClaw controlable desde Telegram. Escanea, detecta y
 ```bash
 git clone https://github.com/jarb02/lobsterguard.git
 cd lobsterguard
-bash install.sh
+sudo bash install.sh
 ```
 
 El instalador:
-1. Detecta OpenClaw
-2. Instala scripts en ~/.openclaw/skills/lobsterguard/
-3. Registra el plugin en ~/.openclaw/extensions/
-4. Configura servicios systemd (auto-scan + quarantine watcher)
-5. Ejecuta scan inicial
+1. Detecta tu instalación de OpenClaw y el usuario
+2. Te pide seleccionar un idioma (Español o English)
+3. Instala dependencias (ufw, auditd)
+4. Configura permisos sudo (NOPASSWD para comandos de seguridad)
+5. Copia scripts y registra el plugin
+6. Configura limpieza automática de procesos fantasma (cron cada 5 minutos)
+7. Verifica la instalación
+
+Las credenciales de Telegram se detectan automáticamente desde tu configuración de OpenClaw — no necesitas configurar nada manualmente.
+
+Para desinstalar:
+```bash
+sudo bash install.sh --uninstall
+```
 
 ## Requisitos
 
 - OpenClaw instalado y corriendo
 - Python 3
-- Plugin de Telegram configurado en OpenClaw
+- Telegram configurado en OpenClaw
+- Acceso root (solo para instalar)
 
 ## Estructura del Proyecto
 
 ```
 lobsterguard/
 ├── scripts/
-│   ├── check.py              # 70 checks de seguridad
-│   ├── fix_engine.py          # 12 auto-fixes con rollback
+│   ├── check.py              # 68 checks de seguridad
+│   ├── fix_engine.py          # 13 auto-fixes con rollback
 │   ├── skill_scanner.py       # Scanner de skills (4 capas)
 │   ├── autoscan.py            # Auto-scan periódico
 │   ├── quarantine_watcher.py  # Vigila carpeta quarantine
-│   └── runall_wrapper.sh      # Ejecuta todos los fixes
+│   ├── cleanup.py             # Limpieza de procesos fantasma
+│   ├── telegram_utils.py      # Utilidades compartidas de Telegram
+│   └── lgsetup.py             # Asistente de configuración
 ├── extension/
 │   └── dist/
-│       ├── index.js           # Plugin OpenClaw (22 comandos)
+│       ├── index.js           # Plugin OpenClaw (24 comandos)
 │       ├── interceptor.js     # 31 patrones de amenazas
 │       ├── watcher.js         # File watcher
 │       ├── fix_tool.js        # Tool de remediación
 │       └── types.js           # Tipos
-├── systemd/                   # Timer y servicios
-├── data/                      # Blacklist y datos
+├── data/
+│   └── config.json            # Preferencia de idioma
 └── install.sh                 # Instalador automático
 ```
 
