@@ -7,7 +7,7 @@ Security plugin for OpenClaw controllable from Telegram. Scans, detects and fixe
 ## What it does
 
 - **68 security checks** across 6 categories
-- **12 auto-fixes** executable from Telegram
+- **11 auto-fixes** executable from Telegram
 - **Skill scanner** with 4-layer deep analysis
 - **Quarantine watcher** monitors suspicious skills 24/7
 - **Auto-scan every 6 hours** with Telegram alerts

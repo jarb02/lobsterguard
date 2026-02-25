@@ -1606,18 +1606,25 @@ AVAILABLE_FIXES = {
         "title_en": "Systemd Hardening",
         "auto_fixable": True,
     },
-    "incident_response": {
-        "plan_fn": plan_incident_response,
-        "verify_fn": verify,
-        "title_es": "Preparacion de Respuesta a Incidentes",
-        "title_en": "Incident Response Readiness",
-        "auto_fixable": True,
-    },
 }
 
 
-def list_fixes():
+def list_fixes(telegram=False, lang="es"):
     """List all available auto-fixes."""
+    # Map check_id to actual command name
+    CMD_MAP = {
+        "openclaw_user": "/runuser",
+        "firewall": "/fixfw",
+        "backups": "/fixbackup",
+        "kernel_hardening": "/fixkernel",
+        "core_dump_protection": "/fixcore",
+        "auditd_logging": "/fixaudit",
+        "sandbox_mode": "/fixsandbox",
+        "env_leakage": "/fixenv",
+        "tmp_security": "/fixtmp",
+        "code_execution_sandbox": "/fixcode",
+        "systemd_hardening": "/fixsystemd",
+    }
     fixes = []
     for check_id, info in AVAILABLE_FIXES.items():
         fixes.append({
@@ -1625,7 +1632,22 @@ def list_fixes():
             "title_es": info["title_es"],
             "title_en": info["title_en"],
         })
-    output({"success": True, "fixes": fixes})
+    if not telegram:
+        output({"success": True, "fixes": fixes})
+    # Telegram-friendly text output
+    title_key = f"title_{lang}"
+    lines = []
+    lines.append("\U0001f6e1 LobsterGuard \u2014 Auto-fixes disponibles:" if lang == "es" else "\U0001f6e1 LobsterGuard \u2014 Available auto-fixes:")
+    lines.append("")
+    for fix in fixes:
+        check_id = fix["check_id"]
+        cmd = CMD_MAP.get(check_id, f"/fix{check_id}")
+        title = fix.get(title_key, fix.get("title_es", check_id))
+        lines.append(f"  {cmd} \u2014 {title}")
+    lines.append("")
+    total_label = "Total" if lang == "en" else "Total"
+    lines.append(f"{total_label}: {len(fixes)} fixes")
+    print("\n".join(lines))
 
 
 # ─── Main ───────────────────────────────────────────────────────────────────
@@ -1729,7 +1751,14 @@ def main():
     action = sys.argv[1]
 
     if action == "list":
-        list_fixes()
+        telegram = "--telegram" in sys.argv
+        lang = "es"
+        for i, arg in enumerate(sys.argv):
+            if arg == "--lang" and i + 1 < len(sys.argv):
+                lang = sys.argv[i + 1]
+                break
+        list_fixes(telegram=telegram, lang=lang)
+        sys.exit(0)
 
     if action == "run":
         if len(sys.argv) < 3:
