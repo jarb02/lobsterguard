@@ -40,8 +40,8 @@ def run_command(cmd, shell=False):
 
 
 def check_openclaw_running():
-    """Check if openclaw-gateway systemd user service is active"""
-    success, output, _ = run_command(["systemctl", "--user", "is-active", "openclaw-gateway"])
+    """Check if openclaw-gateway is running"""
+    success, output, _ = run_command("pgrep -f 'openclaw-gateway' > /dev/null 2>&1", shell=True)
     if success:
         return True, "OpenClaw está ejecutándose / OpenClaw is running"
     else:
@@ -93,10 +93,9 @@ def check_core_scripts():
 
 def check_extension_synced():
     """Check if extension/dist/index.js exists"""
-    plugin_path = os.path.join(OPENCLAW_DIR, "plugins", "lobsterguard-shield", "dist", "index.js")
-    local_path = os.path.join(BASE_DIR, "extension", "dist", "index.js")
+    ext_path = os.path.join(OPENCLAW_DIR, "extensions", "lobsterguard-shield", "dist", "index.js")
     
-    if os.path.isfile(plugin_path) or os.path.isfile(local_path):
+    if os.path.isfile(ext_path):
         return True, "Extensión sincronizada / Extension synced"
     else:
         return False, "Extensión no encontrada / Extension not found"
@@ -137,13 +136,20 @@ def check_systemd_services():
 
 
 def check_blacklist_file():
-    """Check if skill blacklist file exists"""
-    blacklist_path = os.path.join(BASE_DIR, "data", "skill_blacklist.json")
+    """Check if skill blacklist file exists, create if missing"""
+    data_dir = os.path.join(BASE_DIR, "data")
+    blacklist_path = os.path.join(data_dir, "skill_blacklist.json")
     
     if os.path.isfile(blacklist_path):
         return True, "Lista negra de skills cargada / Skill blacklist loaded"
     else:
-        return False, "Lista negra no encontrada / Blacklist not found"
+        try:
+            os.makedirs(data_dir, exist_ok=True)
+            with open(blacklist_path, "w") as f:
+                json.dump({"blacklisted_skills": [], "updated": ""}, f, indent=2)
+            return True, "Lista negra creada / Blacklist created"
+        except Exception:
+            return False, "No se pudo crear lista negra / Could not create blacklist"
 
 
 def check_initial_scan():
@@ -206,7 +212,7 @@ def format_output(results, telegram_mode=False):
     lines.append("")
     
     lines.append("Comandos disponibles / Available commands:")
-    lines.append("/scan /fixlist /runall /checkskill /lgsetup")
+    lines.append("/scan /fixlist /checkskill /lgsetup /cleanup")
     lines.append("")
     
     lines.append("Carpeta cuarentena / Quarantine folder:")
