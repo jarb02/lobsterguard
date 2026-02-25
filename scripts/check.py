@@ -6563,7 +6563,7 @@ def format_report_text(report, lang="es"):
 # ─── Compact Report (API-friendly) ──────────────────────────────────────────
 
 
-def format_compact(report):
+def format_compact(report, lang="es"):
     """Generate an ultra-compact report for minimal API token usage.
     Only shows: score, category summary, and failed checks.
     If everything passes, just a one-liner."""
@@ -6586,7 +6586,7 @@ def format_compact(report):
         "skill_integrity": "/fixcode",
         "code_integrity": "/fixcode",
         "openclaw_user": "/runuser",
-        "systemd_hardening": "/fixsandbox",
+        "systemd_hardening": "/fixsystemd",
 
     }
 
@@ -6608,7 +6608,7 @@ def format_compact(report):
     # If everything passed, short message
     if not failed_checks:
         lines.append("")
-        lines.append("Todo en orden. No se encontraron problemas de seguridad.")
+        lines.append("Todo en orden. No se encontraron problemas de seguridad." if lang == "es" else "All clear. No security issues found.")
         return "\n".join(lines)
 
     # Only show failed checks (sorted by severity)
@@ -6628,8 +6628,8 @@ def format_compact(report):
         else:
             fix_suffix = ""
         
-        lines.append(f"{sev_emoji} {c['severity']}: {c['name_es']}{fix_suffix}")
-        lines.append(f"   {c['details_es']}")
+        lines.append(f"{sev_emoji} {c['severity']}: {c[f'name_{lang}']}{fix_suffix}")
+        lines.append(f"   {c[f'details_{lang}']}")
 
     # Offer fixes with cleaner list
     fixable = [c for c in failed_sorted if c.get("auto_fixable")]
@@ -6690,12 +6690,12 @@ if __name__ == "__main__":
         print(json.dumps(report, indent=2, ensure_ascii=False))
     elif flag == "--compact":
         # Ultra-compact: only failures + summary (saves ~90% tokens)
-        print(format_compact(report))
+        print(format_compact(report, lang=report_lang))
         # Save full reports to cache for later use
         try:
             os.makedirs(DATA_DIR, exist_ok=True)
             with open(os.path.join(DATA_DIR, "latest-report.txt"), "w") as f:
-                f.write(format_report_text(report))
+                f.write(format_report_text(report, lang=report_lang))
             with open(os.path.join(DATA_DIR, "latest-report.json"), "w") as f:
                 f.write(json.dumps(report, indent=2, ensure_ascii=False))
         except Exception:
