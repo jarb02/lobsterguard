@@ -2,3 +2,4 @@ data/last_score.json
 __pycache__/
 *.pyc
 .env
+data/latest-report.*
