@@ -135,8 +135,14 @@ install_skill() {
     log_ok "Configuracion copiada"
     chown -R "$OC_USER:$OC_USER" "$SKILL_DIR" 2>/dev/null || true
     chown -R "$OC_USER:$OC_USER" "$EXT_DIR" 2>/dev/null || true
-    chmod -R 755 "$SKILL_DIR/scripts/"
-    log_ok "Permisos de archivos configurados"
+    # Security: critical scripts owned by root, read-only for user
+    chown root:root "$SKILL_DIR/scripts/check.py" 2>/dev/null || true
+    chmod 644 "$SKILL_DIR/scripts/check.py" 2>/dev/null || true
+    chown root:root "$SKILL_DIR/scripts/fix_engine.py" 2>/dev/null || true
+    chmod 755 "$SKILL_DIR/scripts/fix_engine.py" 2>/dev/null || true
+    chown root:root "$SKILL_DIR/scripts/skill_scanner.py" 2>/dev/null || true
+    chmod 644 "$SKILL_DIR/scripts/skill_scanner.py" 2>/dev/null || true
+    log_ok "Permisos de archivos configurados (root-owned)"
 }
 
 setup_backup_dir() {

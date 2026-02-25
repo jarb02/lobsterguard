@@ -883,9 +883,9 @@ def check_firewall():
     }
 
     # Check UFW first, then iptables/nftables
-    ufw_stdout, _, ufw_code = run_command("PATH=$PATH:/usr/sbin /usr/sbin/ufw status 2>/dev/null || ufw status 2>/dev/null")
-    nft_stdout, _, nft_code = run_command("nft list ruleset 2>/dev/null | head -5")
-    ipt_stdout, _, ipt_code = run_command("iptables -L -n 2>/dev/null | grep -c 'DROP\\|REJECT'")
+    ufw_stdout, _, ufw_code = run_command("sudo /usr/sbin/ufw status 2>/dev/null")
+    nft_stdout, _, nft_code = run_command("sudo nft list ruleset 2>/dev/null | head -5")
+    ipt_stdout, _, ipt_code = run_command("sudo iptables -L -n 2>/dev/null | grep -c 'DROP\\|REJECT'")
 
     has_firewall = False
     if "active" in ufw_stdout.lower() and "inactive" not in ufw_stdout.lower():
@@ -2359,7 +2359,7 @@ def check_self_protection():
             stat = os.stat(critical_file)
             mode = oct(stat.st_mode)[-3:]
             # If world-writable or group-writable
-            if int(mode[1]) >= 2 or int(mode[2]) >= 2:
+            if int(mode[1]) & 2 or int(mode[2]) & 2:
                 issues.append({
                     "es": f"{critical_file.name} es escribible por otros usuarios ({mode})",
                     "en": f"{critical_file.name} is writable by other users ({mode})",
@@ -3730,7 +3730,7 @@ def check_rogue_agent():
     # Check for unusual child processes
     stdout, stderr, returncode = run_command("ps aux | grep openclaw | grep -v grep | wc -l")
     openclaw_processes = int(stdout) if stdout.isdigit() else 0
-    if openclaw_processes > 5:
+    if openclaw_processes > 25:
         issues.append({
             "es": f"Demasiados procesos OpenClaw ({openclaw_processes})",
             "en": f"Too many OpenClaw processes ({openclaw_processes})",
@@ -3832,7 +3832,7 @@ def check_kernel_hardening():
     issues = []
 
     for setting, expected in required_settings.items():
-        stdout, stderr, returncode = run_command(f"sysctl {setting} 2>/dev/null")
+        stdout, stderr, returncode = run_command(f"sudo /usr/sbin/sysctl {setting} 2>/dev/null")
         actual = None
         if returncode == 0:
             try:
@@ -4162,7 +4162,7 @@ def check_code_execution_sandbox():
     issues = []
 
     # Check if AppArmor or SELinux is active
-    stdout, stderr, returncode = run_command("aa-status 2>/dev/null | head -1")
+    stdout, stderr, returncode = run_command("sudo aa-status 2>/dev/null | head -1")
     apparmor_active = returncode == 0 and "apparmor" in stdout.lower()
 
     stdout, stderr, returncode = run_command("getenforce 2>/dev/null")
@@ -5052,7 +5052,7 @@ def check_rootkit_detection_basic():
             sysmod_count = int(stdout_sysmod.strip())
 
             # If /sys/module has significantly more than lsmod reports, there may be hidden modules
-            if sysmod_count > lsmod_count + 5:
+            if sysmod_count > lsmod_count * 4:
                 issues.append({
                     "es": f"Diferencia sospechosa en modulos: lsmod={lsmod_count}, sysfs={sysmod_count}",
                     "en": f"Suspicious difference in modules: lsmod={lsmod_count}, sysfs={sysmod_count}",
@@ -6079,7 +6079,7 @@ def check_auditd_logging():
     issues = []
 
     # Check if auditd is running
-    stdout, stderr, returncode = run_command("systemctl is-active auditd 2>/dev/null")
+    stdout, stderr, returncode = run_command("sudo systemctl is-active auditd 2>/dev/null")
 
     if returncode != 0 or "active" not in stdout:
         issues.append({
@@ -6088,7 +6088,7 @@ def check_auditd_logging():
         })
 
     # Check for audit rules
-    stdout, stderr, returncode = run_command("auditctl -l 2>/dev/null | wc -l")
+    stdout, stderr, returncode = run_command("sudo auditctl -l 2>/dev/null | wc -l")
 
     if returncode == 0:
         try:
