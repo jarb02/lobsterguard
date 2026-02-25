@@ -12,72 +12,15 @@ import subprocess
 import urllib.request
 import urllib.parse
 from datetime import datetime
+from telegram_utils import get_telegram_config, send_telegram
 
 
-def get_telegram_config():
-    """Auto-detect Telegram bot token and chat_id from OpenClaw config."""
-    import json, os, pathlib
-    oc_home = pathlib.Path(os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw")))
 
-    bot_token = ""
-    chat_id = ""
-
-    # Bot token: from openclaw.json -> telegram.botToken
-    try:
-        with open(oc_home / "openclaw.json") as f:
-            config = json.load(f)
-        # Navigate nested structure to find botToken
-        def find_key(d, key):
-            if isinstance(d, dict):
-                if key in d:
-                    return d[key]
-                for v in d.values():
-                    r = find_key(v, key)
-                    if r:
-                        return r
-            return None
-        bot_token = find_key(config, "botToken") or ""
-    except Exception:
-        pass
-
-    # Chat ID: from credentials/telegram-default-allowFrom.json -> allowFrom[0]
-    try:
-        with open(oc_home / "credentials" / "telegram-default-allowFrom.json") as f:
-            data = json.load(f)
-        allow = data.get("allowFrom", [])
-        if allow:
-            chat_id = str(allow[0])
-    except Exception:
-        pass
-
-    return bot_token, chat_id
-
-
-# Constants
-BOT_TOKEN, CHAT_ID = get_telegram_config()
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 CHECK_SCRIPT = os.path.join(SCRIPT_DIR, "check.py")
 DATA_DIR = os.path.join(os.path.dirname(SCRIPT_DIR), "data")
 SCORE_FILE = os.path.join(DATA_DIR, "last_score.json")
 
-
-def send_telegram(text):
-    """Send a message via Telegram Bot API"""
-    try:
-        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        data = urllib.parse.urlencode({
-            'chat_id': CHAT_ID,
-            'text': text,
-            'parse_mode': 'HTML'
-        }).encode('utf-8')
-        
-        req = urllib.request.Request(url, data=data)
-        with urllib.request.urlopen(req, timeout=10) as response:
-            result = response.read()
-            return True
-    except Exception as e:
-        print(f"Error sending Telegram message: {e}", file=sys.stderr)
-        return False
 
 
 def get_last_score():

@@ -154,7 +154,7 @@ install_skill() {
     SKILL_DIR="$OPENCLAW_DIR/skills/lobsterguard"
     EXT_DIR="$OPENCLAW_DIR/extensions/lobsterguard-shield"
     mkdir -p "$SKILL_DIR/scripts" "$EXT_DIR/dist"
-    for f in check.py fix_engine.py skill_scanner.py autoscan.py quarantine_watcher.py cleanup.py; do
+    for f in check.py fix_engine.py skill_scanner.py autoscan.py quarantine_watcher.py cleanup.py telegram_utils.py; do
         [ -f "$SCRIPT_DIR/scripts/$f" ] && cp "$SCRIPT_DIR/scripts/$f" "$SKILL_DIR/scripts/"
     done
     log_ok "Scripts copiados"
@@ -252,8 +252,8 @@ uninstall() {
     [ -d "$EXT_DIR" ] && rm -rf "$EXT_DIR" && log_ok "Extension eliminada"
     [ -f "/etc/sudoers.d/lobsterguard" ] && rm -f "/etc/sudoers.d/lobsterguard" && log_ok "Sudoers eliminado"
     # Remove cleanup cron
-    if su - "" -c "crontab -l 2>/dev/null" | grep -q "cleanup.py"; then
-        su - "" -c "crontab -l 2>/dev/null | grep -v cleanup.py | crontab -"
+    if su - "$OC_USER" -c "crontab -l 2>/dev/null" | grep -q "cleanup.py"; then
+        su - "$OC_USER" -c "crontab -l 2>/dev/null | grep -v cleanup.py | crontab -"
         log_ok "Cron de limpieza eliminado"
     fi
     printf "\n"

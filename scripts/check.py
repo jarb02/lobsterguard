@@ -37,6 +37,8 @@ OPENCLAW_CONFIG = OPENCLAW_HOME / "config" / "moltbot.json"
 OPENCLAW_CREDENTIALS = OPENCLAW_HOME / ".env"
 OPENCLAW_SKILLS_DIR = OPENCLAW_HOME / "skills"
 OPENCLAW_GATEWAY_CONFIG = OPENCLAW_HOME / "config" / "gateway.json"
+SCRIPT_DIR = Path(__file__).resolve().parent
+DATA_DIR = SCRIPT_DIR.parent / "data"
 SECURECLAW_PATH = OPENCLAW_HOME / "plugins" / "secureclaw"
 SECURECLAW_AUDIT_SCRIPT = SECURECLAW_PATH / "scripts" / "audit.sh"
 
@@ -96,13 +98,10 @@ def read_json_safe(path):
         return None
 
 
-def detect_language():
-    """Read language preference from config.json, fallback to 'es'."""
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(script_dir, "..", "data", "config.json")
+def get_configured_language():
+    """Read language from config.json (set during install), fallback to 'es'."""
     try:
-        with open(config_path) as f:
-            import json
+        with open(DATA_DIR / "config.json") as f:
             config = json.load(f)
             lang = config.get("language", "es")
             if lang in ("es", "en"):
@@ -6684,13 +6683,13 @@ if __name__ == "__main__":
     report = generate_report()
 
     # Language detection
-    report_lang = detect_language()
+    report_lang = get_configured_language()
     for i, arg in enumerate(sys.argv):
         if arg == "--lang" and i + 1 < len(sys.argv):
             report_lang = sys.argv[i + 1] if sys.argv[i + 1] in ("es", "en") else "es"
             break
     else:
-        report_lang = detect_language()
+        report_lang = get_configured_language()
 
     # Check for flags (ignore --lang and its value)
     flags = [a for a in sys.argv[1:] if a != "--lang" and a not in ("es", "en")]

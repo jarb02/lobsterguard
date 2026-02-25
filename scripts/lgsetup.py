@@ -9,38 +9,9 @@ import sys
 import subprocess
 import json
 from pathlib import Path
+from telegram_utils import get_telegram_config, send_telegram
 
 # Configuration
-def get_telegram_config():
-    """Auto-detect Telegram bot token and chat_id from OpenClaw config."""
-    import json, os, pathlib
-    oc_home = pathlib.Path(os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw")))
-    bot_token = ""
-    chat_id = ""
-    try:
-        with open(oc_home / "openclaw.json") as f:
-            config = json.load(f)
-        def find_key(d, key):
-            if isinstance(d, dict):
-                if key in d:
-                    return d[key]
-                for v in d.values():
-                    r = find_key(v, key)
-                    if r:
-                        return r
-            return None
-        bot_token = find_key(config, "botToken") or ""
-    except Exception:
-        pass
-    try:
-        with open(oc_home / "credentials" / "telegram-default-allowFrom.json") as f:
-            data = json.load(f)
-        allow = data.get("allowFrom", [])
-        if allow:
-            chat_id = str(allow[0])
-    except Exception:
-        pass
-    return bot_token, chat_id
 
 BOT_TOKEN, CHAT_ID = get_telegram_config()
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

@@ -9,78 +9,15 @@ import sys
 import time
 import requests
 import pyinotify
+from telegram_utils import get_telegram_config, send_telegram
 
-
-def get_telegram_config():
-    """Auto-detect Telegram bot token and chat_id from OpenClaw config."""
-    import json, os, pathlib
-    oc_home = pathlib.Path(os.environ.get("OPENCLAW_HOME", os.path.expanduser("~/.openclaw")))
-
-    bot_token = ""
-    chat_id = ""
-
-    # Bot token: from openclaw.json -> telegram.botToken
-    try:
-        with open(oc_home / "openclaw.json") as f:
-            config = json.load(f)
-        # Navigate nested structure to find botToken
-        def find_key(d, key):
-            if isinstance(d, dict):
-                if key in d:
-                    return d[key]
-                for v in d.values():
-                    r = find_key(v, key)
-                    if r:
-                        return r
-            return None
-        bot_token = find_key(config, "botToken") or ""
-    except Exception:
-        pass
-
-    # Chat ID: from credentials/telegram-default-allowFrom.json -> allowFrom[0]
-    try:
-        with open(oc_home / "credentials" / "telegram-default-allowFrom.json") as f:
-            data = json.load(f)
-        allow = data.get("allowFrom", [])
-        if allow:
-            chat_id = str(allow[0])
-    except Exception:
-        pass
-
-    return bot_token, chat_id
-
-
-# Add script directory to path for imports
-script_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, script_dir)
-
-try:
-    from skill_scanner import analyze_layer1, analyze_layer2, analyze_layer3, analyze_layer4, FRIENDLY_DESC
-except ImportError as e:
-    print(f"Error importing skill_scanner: {e}")
-    print("Make sure skill_scanner.py is in the same directory as this script.")
-    sys.exit(1)
-
-# Configuration
 BOT_TOKEN, CHAT_ID = get_telegram_config()
+
+
+
 QUARANTINE_DIR = os.path.expanduser("~/.openclaw/quarantine")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
-
-def send_telegram(text):
-    """Send a message to Telegram Bot API with HTML parse mode."""
-    try:
-        payload = {
-            "chat_id": CHAT_ID,
-            "text": text,
-            "parse_mode": "HTML"
-        }
-        response = requests.post(TELEGRAM_API_URL, json=payload, timeout=10)
-        response.raise_for_status()
-        return True
-    except Exception as e:
-        print(f"Error sending Telegram message: {e}")
-        return False
 
 
 def _friendly(desc):

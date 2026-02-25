@@ -1121,7 +1121,6 @@ def plan_code_execution_sandbox(target_user="", lang="es"):
 
 def plan_systemd_hardening(target_user="", lang="es"):
     """Plan function for systemd service hardening - creates service if needed"""
-    import subprocess
 
     # Detect current OpenClaw binary and user
     oc_bin = "/usr/bin/openclaw"
