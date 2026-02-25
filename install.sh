@@ -1,179 +1,245 @@
-#!/bin/bash
-# LobsterGuard Installer v6.0
-# Security Skill + Shield Plugin for OpenClaw — Bilingual (ES/EN)
+#!/usr/bin/env bash
+# ============================================================
+#  LobsterGuard Installer v6.0
+#  Security Auditor Skill for OpenClaw
+#  https://github.com/jarb02/lobsterguard
+# ============================================================
 set -e
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[1;33m"
+BLUE="\033[0;34m"
+NC="\033[0m"
 
-LOBSTERGUARD_VERSION="6.0.0"
-OPENCLAW_HOME="${HOME}/.openclaw"
-SKILLS_DIR="${OPENCLAW_HOME}/skills"
-LG_SKILL_DIR="${SKILLS_DIR}/lobsterguard"
-QUARANTINE_DIR="${OPENCLAW_HOME}/quarantine"
-SYSTEMD_DIR="${HOME}/.config/systemd/user"
-
-echo -e "${CYAN}"
-echo "  _        _       _             ____                     _ "
-echo " | |   ___| |__ __| |_ ___ _ _ / ___|_   _  __ _ _ __ __| |"
-echo " | |  / _ \\ '_ (_-<  _/ -_) '_| |  _| | | |/ _\` | '__/ _\` |"
-echo " | |_|\\___/_.__/__/\\__\\___|_| | |_| | |_| | (_| | | | (_| |"
-echo " |____|                        \\____|\\__,_|\\__,_|_|  \\__,_|"
-echo -e "${NC}"
-echo -e "${BLUE}LobsterGuard v${LOBSTERGUARD_VERSION} — Security Auditor for OpenClaw${NC}"
-echo ""
-
-# --- Step 1: Verify OpenClaw ---
-echo -e "${YELLOW}[1/7]${NC} Verificando OpenClaw / Verifying OpenClaw..."
-if [ \! -d "$OPENCLAW_HOME" ]; then
-    echo -e "${RED}Error: OpenClaw no encontrado en $OPENCLAW_HOME${NC}"
-    echo "Error: OpenClaw not found at $OPENCLAW_HOME"
-    echo "Instale OpenClaw primero / Install OpenClaw first"
-    exit 1
-fi
-echo -e "${GREEN}  ✅ OpenClaw encontrado / found${NC}"
-
-# --- Step 2: Detect source (local or git) ---
-echo -e "${YELLOW}[2/7]${NC} Detectando fuente / Detecting source..."
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/scripts/check.py" ]; then
-    SOURCE_DIR="$SCRIPT_DIR"
-    echo -e "${GREEN}  ✅ Instalación local / Local install${NC}"
-else
-    echo -e "${RED}Error: No se encontraron archivos fuente / Source files not found${NC}"
-    echo "Ejecute desde el directorio de LobsterGuard / Run from LobsterGuard directory"
-    exit 1
-fi
-
-# --- Step 3: Install skill ---
-echo -e "${YELLOW}[3/7]${NC} Instalando skill / Installing skill..."
-mkdir -p "$LG_SKILL_DIR"
-cp -r "$SOURCE_DIR/scripts" "$LG_SKILL_DIR/"
-cp -r "$SOURCE_DIR/data" "$LG_SKILL_DIR/"
-cp -r "$SOURCE_DIR/references" "$LG_SKILL_DIR/" 2>/dev/null || true
-cp "$SOURCE_DIR/SKILL.md" "$LG_SKILL_DIR/" 2>/dev/null || true
-cp "$SOURCE_DIR/README.md" "$LG_SKILL_DIR/" 2>/dev/null || true
-cp "$SOURCE_DIR/openclaw.plugin.json" "$LG_SKILL_DIR/" 2>/dev/null || true
-chmod +x "$LG_SKILL_DIR/scripts/"*.py
-chmod +x "$LG_SKILL_DIR/scripts/"*.sh 2>/dev/null || true
-echo -e "${GREEN}  ✅ Skill instalado en / installed at: $LG_SKILL_DIR${NC}"
-
-# --- Step 4: Install plugin/extension ---
-echo -e "${YELLOW}[4/7]${NC} Instalando extension / Installing extension..."
-LG_EXT_DIR="${OPENCLAW_HOME}/extensions/lobsterguard-shield"
-mkdir -p "$LG_EXT_DIR/dist"
-cp "$SOURCE_DIR/extension/dist/"*.js "$LG_EXT_DIR/dist/"
-cp "$SOURCE_DIR/extension/package.json" "$LG_EXT_DIR/"
-
-# Create openclaw.plugin.json manifest if not present
-if [ ! -f "$LG_EXT_DIR/openclaw.plugin.json" ]; then
-    cat > "$LG_EXT_DIR/openclaw.plugin.json" << 'MANIFEST'
-{
-  "id": "lobsterguard-shield",
-  "configSchema": {
-    "type": "object",
-    "additionalProperties": false,
-    "properties": {}
-  }
-}
-MANIFEST
-fi
-
-echo -e "${GREEN}  ✅ Extension instalada en / installed at: $LG_EXT_DIR${NC}"
-
-# Register plugin in OpenClaw config
-echo -e "${YELLOW}[4b/7]${NC} Registrando plugin / Registering plugin..."
-OPENCLAW_CONFIG="${OPENCLAW_HOME}/openclaw.json"
-if [ -f "$OPENCLAW_CONFIG" ]; then
-    python3 << 'PYEOF'
-import json, os
-from datetime import datetime, timezone
-
-config_path = os.path.expanduser("~/.openclaw/openclaw.json")
-ext_path = os.path.expanduser("~/.openclaw/extensions/lobsterguard-shield")
-
-try:
-    with open(config_path) as f:
-        config = json.load(f)
-except:
-    config = {}
-
-# Ensure plugins section exists
-if "plugins" not in config:
-    config["plugins"] = {}
-if "entries" not in config["plugins"]:
-    config["plugins"]["entries"] = {}
-if "installs" not in config["plugins"]:
-    config["plugins"]["installs"] = {}
-
-# Add entry
-config["plugins"]["entries"]["lobsterguard-shield"] = {"enabled": True}
-
-# Add install record
-config["plugins"]["installs"]["lobsterguard-shield"] = {
-    "source": "path",
-    "sourcePath": ext_path,
-    "installPath": ext_path,
-    "version": "4.0.0",
-    "installedAt": datetime.now(timezone.utc).isoformat()
+print_banner() {
+    printf "${BLUE}\n"
+    printf "  _        _         _             ____                     _\n"
+    printf " | |   ___| |__  ___| |_ ___ _ __ / ___|_   _  __ _ _ __ __| |\n"
+    printf " | |  / _ \\  _ \\/ __| __/ _ \\  __| |  _| | | |/ _\` |  __/ _\` |\n"
+    printf " | |_| (_) | |_) \\__ \\ ||  __/ |  | |_| | |_| | (_| | | | (_| |\n"
+    printf " |____\\___/|_.__/|___/\\__\\___|_|   \\____|\\__,_|\\__,_|_|  \\__,_|\n"
+    printf "\n"
+    printf "  Security Auditor for OpenClaw - v6.0${NC}\n\n"
 }
 
-with open(config_path, "w") as f:
-    json.dump(config, f, indent=2)
+log_ok()   { printf "  ${GREEN}✓${NC} %s\n" "$1"; }
+log_warn() { printf "  ${YELLOW}!${NC} %s\n" "$1"; }
+log_err()  { printf "  ${RED}✗${NC} %s\n" "$1"; }
+log_info() { printf "  ${BLUE}→${NC} %s\n" "$1"; }
 
-print("  Plugin registered in openclaw.json")
-PYEOF
-    echo -e "${GREEN}  ✅ Plugin registrado / Plugin registered${NC}"
-else
-    echo -e "${YELLOW}  ⚠️ openclaw.json no encontrado / not found — registro manual necesario${NC}"
-fi
+check_root() {
+    if [ "$(id -u)" -ne 0 ]; then
+        printf "\n"
+        log_err "Este script debe ejecutarse como root o con sudo"
+        log_info "Uso: sudo bash install.sh"
+        printf "\n"
+        exit 1
+    fi
+}
 
-# --- Step 5: Create quarantine folder ---
-echo -e "${YELLOW}[5/7]${NC} Creando carpeta cuarentena / Creating quarantine folder..."
-mkdir -p "$QUARANTINE_DIR"
-echo -e "${GREEN}  ✅ Carpeta cuarentena / Quarantine folder: $QUARANTINE_DIR${NC}"
+check_openclaw() {
+    OC_USER="$(ps aux | grep -i 'openclaw' | grep -v grep | head -1 | awk '{print $1}')"
+    if [ -z "$OC_USER" ]; then
+        for u in $(ls /home/ 2>/dev/null); do
+            if [ -d "/home/$u/.openclaw" ]; then
+                OC_USER="$u"
+                break
+            fi
+        done
+    fi
+    if [ -z "$OC_USER" ] && [ -d "/root/.openclaw" ]; then
+        OC_USER="root"
+    fi
+    if [ -z "$OC_USER" ]; then
+        log_err "No se encontro OpenClaw instalado"
+        log_info "Instala OpenClaw primero: https://openclaw.io"
+        exit 1
+    fi
+    if [ "$OC_USER" = "root" ]; then
+        OC_HOME="/root"
+    else
+        OC_HOME="/home/$OC_USER"
+    fi
+    OPENCLAW_DIR="$OC_HOME/.openclaw"
+    log_ok "OpenClaw detectado - usuario: $OC_USER"
+}
 
-# --- Step 6: Install systemd services ---
-echo -e "${YELLOW}[6/7]${NC} Configurando servicios / Configuring services..."
-mkdir -p "$SYSTEMD_DIR"
-if [ -d "$SOURCE_DIR/systemd" ]; then
-    cp "$SOURCE_DIR/systemd/"*.service "$SYSTEMD_DIR/" 2>/dev/null || true
-    cp "$SOURCE_DIR/systemd/"*.timer "$SYSTEMD_DIR/" 2>/dev/null || true
-    systemctl --user daemon-reload 2>/dev/null || true
-    systemctl --user enable lobsterguard-autoscan.timer 2>/dev/null || true
-    systemctl --user start lobsterguard-autoscan.timer 2>/dev/null || true
-    systemctl --user enable lobsterguard-quarantine.service 2>/dev/null || true
-    systemctl --user start lobsterguard-quarantine.service 2>/dev/null || true
-    echo -e "${GREEN}  ✅ Servicios systemd configurados / Systemd services configured${NC}"
-else
-    echo -e "${YELLOW}  ⚠️ Archivos systemd no encontrados / Systemd files not found${NC}"
-fi
+install_deps() {
+    log_info "Instalando dependencias del sistema..."
+    apt-get update -qq > /dev/null 2>&1 || true
+    for pkg in ufw auditd audispd-plugins; do
+        if dpkg -s "$pkg" > /dev/null 2>&1; then
+            log_ok "$pkg ya instalado"
+        else
+            if apt-get install -y -qq "$pkg" > /dev/null 2>&1; then
+                log_ok "$pkg instalado"
+            else
+                log_warn "$pkg no se pudo instalar (opcional)"
+            fi
+        fi
+    done
+}
 
-# --- Step 7: Run initial scan ---
-echo -e "${YELLOW}[7/7]${NC} Ejecutando escaneo inicial / Running initial scan..."
-echo ""
-SCAN_OUTPUT=$(python3 -W ignore "$LG_SKILL_DIR/scripts/check.py" --compact 2>&1) || true
-SCORE=$(echo "$SCAN_OUTPUT" | grep -oP 'Score:\s*\K\d+' | head -1)
-CHECKS=$(echo "$SCAN_OUTPUT" | grep -oP '\d+/\d+ checks' | head -1)
+setup_sudoers() {
+    if [ "$OC_USER" = "root" ]; then
+        log_ok "Usuario es root - no necesita sudoers"
+        return
+    fi
+    log_info "Configurando permisos sudo para LobsterGuard..."
+    SUDOERS_FILE="/etc/sudoers.d/lobsterguard"
+    
+    {
+        echo "# LobsterGuard Security Auditor - auto-generated"
+        echo "# Allows OpenClaw user to run security fixes without password"
+        echo ""
+        echo "$OC_USER ALL=(ALL) NOPASSWD: /usr/bin/apt-get, /usr/bin/apt, /usr/bin/dpkg-reconfigure"
+        echo "$OC_USER ALL=(ALL) NOPASSWD: /usr/sbin/ufw, /usr/sbin/iptables"
+        echo "$OC_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl, /usr/sbin/service, /sbin/sysctl, /usr/sbin/sysctl"
+        echo "$OC_USER ALL=(ALL) NOPASSWD: /usr/sbin/auditctl, /usr/sbin/augenrules"
+        echo "$OC_USER ALL=(ALL) NOPASSWD: /usr/bin/tee, /bin/cp, /usr/bin/cp, /usr/bin/mkdir, /usr/bin/chmod, /usr/bin/chown"
+        echo "$OC_USER ALL=(ALL) NOPASSWD: /usr/bin/cat, /usr/bin/find, /usr/bin/ls, /usr/bin/stat, /usr/bin/rm, /usr/bin/install, /usr/bin/readlink"
+        echo "$OC_USER ALL=(ALL) NOPASSWD: /usr/sbin/useradd, /usr/sbin/usermod, /usr/bin/chage, /usr/sbin/visudo"
+        echo "$OC_USER ALL=(ALL) NOPASSWD: /usr/bin/fail2ban-client, /usr/bin/ss, /usr/bin/crontab, /usr/bin/loginctl"
+        echo "$OC_USER ALL=(ALL) NOPASSWD: /usr/bin/journalctl, /usr/sbin/aa-status, /usr/bin/aa-status, /usr/sbin/aa-enforce"
+        echo "$OC_USER ALL=(ALL) NOPASSWD: /bin/mount, /usr/bin/kill, /usr/bin/killall, /usr/bin/sed, /usr/bin/grep"
+        echo "$OC_USER ALL=(ALL) NOPASSWD: /bin/sh, /bin/bash"
+    } > "$SUDOERS_FILE"
 
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}🛡 LobsterGuard v${LOBSTERGUARD_VERSION} instalado exitosamente${NC}"
-echo -e "${GREEN}🛡 LobsterGuard v${LOBSTERGUARD_VERSION} installed successfully${NC}"
-echo ""
-if [ -n "$SCORE" ]; then
-    echo -e "  Score: ${CYAN}${SCORE}/100${NC} — ${CHECKS}"
-fi
-echo ""
-echo -e "  Comandos Telegram / Telegram commands:"
-echo -e "  ${BLUE}/scan${NC} — Escaneo completo / Full scan"
-echo -e "  ${BLUE}/fixlist${NC} — Ver problemas / View issues"
-echo -e "  ${BLUE}/runall${NC} — Arreglar todo / Fix all"
-echo -e "  ${BLUE}/checkskill${NC} — Escanear skills / Scan skills"
-echo -e "  ${BLUE}/lgsetup${NC} — Verificar instalación / Verify install"
-echo ""
-echo -e "  Cuarentena / Quarantine: ${YELLOW}${QUARANTINE_DIR}${NC}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    chmod 440 "$SUDOERS_FILE"
+    if visudo -cf "$SUDOERS_FILE" > /dev/null 2>&1; then
+        log_ok "Permisos sudo configurados"
+    else
+        rm -f "$SUDOERS_FILE"
+        log_err "Error en sudoers - eliminado por seguridad"
+    fi
+}
+
+install_skill() {
+    log_info "Instalando LobsterGuard skill..."
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    SKILL_DIR="$OPENCLAW_DIR/skills/lobsterguard"
+    EXT_DIR="$OPENCLAW_DIR/extensions/lobsterguard-shield"
+    mkdir -p "$SKILL_DIR/scripts" "$EXT_DIR/dist"
+    for f in check.py fix_engine.py skill_scanner.py autoscan.py quarantine_watcher.py; do
+        [ -f "$SCRIPT_DIR/scripts/$f" ] && cp "$SCRIPT_DIR/scripts/$f" "$SKILL_DIR/scripts/"
+    done
+    log_ok "Scripts copiados"
+    for f in index.js interceptor.js watcher.js fix_tool.js types.js; do
+        [ -f "$SCRIPT_DIR/extension/dist/$f" ] && cp "$SCRIPT_DIR/extension/dist/$f" "$EXT_DIR/dist/"
+    done
+    log_ok "Extension copiada"
+    for f in package.json openclaw.plugin.json; do
+        [ -f "$SCRIPT_DIR/extension/$f" ] && cp "$SCRIPT_DIR/extension/$f" "$EXT_DIR/"
+    done
+    log_ok "Configuracion copiada"
+    chown -R "$OC_USER:$OC_USER" "$SKILL_DIR" 2>/dev/null || true
+    chown -R "$OC_USER:$OC_USER" "$EXT_DIR" 2>/dev/null || true
+    chmod -R 755 "$SKILL_DIR/scripts/"
+    log_ok "Permisos de archivos configurados"
+}
+
+setup_backup_dir() {
+    BACKUP_DIR="$OC_HOME/.openclaw/backups"
+    if [ ! -d "$BACKUP_DIR" ]; then
+        mkdir -p "$BACKUP_DIR"
+        chown "$OC_USER:$OC_USER" "$BACKUP_DIR"
+        chmod 700 "$BACKUP_DIR"
+        log_ok "Directorio de backups creado"
+    else
+        log_ok "Directorio de backups ya existe"
+    fi
+}
+
+verify_install() {
+    log_info "Verificando instalacion..."
+    ERRORS=0
+    for f in check.py fix_engine.py skill_scanner.py; do
+        if [ -f "$SKILL_DIR/scripts/$f" ]; then
+            log_ok "$f presente"
+        else
+            log_err "$f falta"
+            ERRORS=$((ERRORS + 1))
+        fi
+    done
+    if [ -f "$EXT_DIR/dist/index.js" ]; then
+        log_ok "index.js presente"
+    else
+        log_err "index.js falta"
+        ERRORS=$((ERRORS + 1))
+    fi
+    if python3 -c "compile(open('$SKILL_DIR/scripts/fix_engine.py').read(), 'f', 'exec')" 2>/dev/null; then
+        log_ok "fix_engine.py sintaxis OK"
+    else
+        log_err "fix_engine.py tiene errores de sintaxis"
+        ERRORS=$((ERRORS + 1))
+    fi
+    if python3 -c "compile(open('$SKILL_DIR/scripts/check.py').read(), 'f', 'exec')" 2>/dev/null; then
+        log_ok "check.py sintaxis OK"
+    else
+        log_err "check.py tiene errores de sintaxis"
+        ERRORS=$((ERRORS + 1))
+    fi
+    if [ "$OC_USER" != "root" ]; then
+        if su - "$OC_USER" -c "sudo -n ufw status" > /dev/null 2>&1; then
+            log_ok "Sudo NOPASSWD funciona"
+        else
+            log_warn "Sudo NOPASSWD - verificar manualmente"
+        fi
+    fi
+    return $ERRORS
+}
+
+uninstall() {
+    print_banner
+    printf "  ${YELLOW}Desinstalando LobsterGuard...${NC}\n\n"
+    check_openclaw
+    SKILL_DIR="$OPENCLAW_DIR/skills/lobsterguard"
+    EXT_DIR="$OPENCLAW_DIR/extensions/lobsterguard-shield"
+    [ -d "$SKILL_DIR" ] && rm -rf "$SKILL_DIR" && log_ok "Skill eliminado"
+    [ -d "$EXT_DIR" ] && rm -rf "$EXT_DIR" && log_ok "Extension eliminada"
+    [ -f "/etc/sudoers.d/lobsterguard" ] && rm -f "/etc/sudoers.d/lobsterguard" && log_ok "Sudoers eliminado"
+    printf "\n"
+    log_ok "LobsterGuard desinstalado completamente"
+    printf "  ${BLUE}Reinicia OpenClaw para aplicar cambios${NC}\n\n"
+}
+
+main() {
+    print_banner
+    check_root
+    if [ "$1" = "--uninstall" ] || [ "$1" = "-u" ]; then
+        uninstall
+        exit 0
+    fi
+    printf "  ${BLUE}Iniciando instalacion...${NC}\n\n"
+    check_openclaw
+    install_deps
+    setup_sudoers
+    install_skill
+    setup_backup_dir
+    printf "\n"
+    verify_install || true
+    printf "\n"
+    printf "  ${GREEN}════════════════════════════════════════════${NC}\n"
+    printf "  ${GREEN}   LobsterGuard instalado exitosamente!    ${NC}\n"
+    printf "  ${GREEN}════════════════════════════════════════════${NC}\n"
+    printf "\n"
+    printf "  ${BLUE}Comandos disponibles desde Telegram:${NC}\n"
+    printf "  /scan        - Escaneo completo de seguridad\n"
+    printf "  /score       - Puntaje de seguridad\n"
+    printf "  /fixlist     - Lista de fixes disponibles\n"
+    printf "  /fixfw       - Configurar firewall\n"
+    printf "  /fixbackup   - Configurar backups\n"
+    printf "  /fixaudit    - Configurar auditoria\n"
+    printf "  /fixkernel   - Endurecer kernel\n"
+    printf "  /fixenv      - Proteger tokens\n"
+    printf "  /fixsandbox  - Configurar sandbox\n"
+    printf "  /fixtmp      - Proteger /tmp\n"
+    printf "  /fixcode     - Verificar integridad\n"
+    printf "  /fixcore     - Deshabilitar core dumps\n"
+    printf "\n"
+    printf "  ${BLUE}Reinicia OpenClaw para activar el plugin${NC}\n"
+    printf "  ${YELLOW}Desinstalar: sudo bash install.sh --uninstall${NC}\n\n"
+}
+
+main "$@"
