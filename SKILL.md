@@ -89,7 +89,7 @@ chmod +x install.sh
 
 **Step 1**: Run a compact scan (only shows problems, saves tokens):
 ```bash
-python3 ~/.openclaw/skills/lobsterguard/scripts/check.py --compact
+/usr/local/bin/lobsterguard-check --compact
 ```
 
 This runs all 68 checks locally and returns ONLY the failed ones + score. If everything passes, it returns a one-line summary. Full report is saved to cache automatically.

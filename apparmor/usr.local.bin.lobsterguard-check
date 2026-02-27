@@ -1,0 +1,81 @@
+# AppArmor profile for LobsterGuard check.py (READ-ONLY scanner)
+# Battle-tested: 0 DENIED, 84/100 score in enforce mode
+#
+# Architecture: Broad READ (scanner must audit entire system)
+# + strict WRITE denials (core protection)
+# + sudo runs Unconfined (needs /etc/shadow for account validation)
+#
+# Tested: Ubuntu 22.04, AppArmor 3.x, enforce mode
+
+#include <tunables/global>
+
+profile lobsterguard-check /usr/local/bin/lobsterguard-check flags=(attach_disconnected) {
+  #include <abstractions/base>
+  #include <abstractions/python>
+  #include <abstractions/nameservice>
+
+  capability dac_read_search,
+  capability sys_ptrace,
+  capability setgid,
+  capability setuid,
+  capability sys_resource,
+  capability net_admin,
+  capability audit_write,
+
+  ptrace read,
+
+  / r,
+  /** r,
+
+  /usr/bin/dash ix,
+  /usr/bin/bash ix,
+  /usr/bin/sudo Ux,
+
+  /usr/bin/** rix,
+  /usr/sbin/** rix,
+  /usr/local/bin/** rix,
+  /bin/** rix,
+  /sbin/** rix,
+  /usr/lib/node_modules/** rix,
+  /usr/libexec/** mrix,
+
+  /dev/ r,
+  /dev/** rw,
+
+  /tmp/ rw,
+  /tmp/** rw,
+  @{PROC}/ r,
+  @{PROC}/** r,
+
+  /run/ r,
+  /run/** rwk,
+
+  owner @{HOME}/.openclaw/skills/lobsterguard/data/ rw,
+  owner @{HOME}/.openclaw/skills/lobsterguard/data/** rw,
+  owner @{HOME}/.openclaw/agents/** rw,
+  owner @{HOME}/.openclaw/logs/** rw,
+  owner @{HOME}/.openclaw/memory/** rw,
+
+  deny /etc/** w,
+  deny /usr/** w,
+  deny /boot/** w,
+  deny /var/log/** w,
+  deny /var/lib/** w,
+  deny /var/spool/** w,
+  deny /var/cache/** w,
+  deny /var/www/** w,
+  deny /var/mail/** w,
+  deny /var/backups/** w,
+  deny @{HOME}/.openclaw/config/** w,
+  deny @{HOME}/.openclaw/gateway/** w,
+  deny @{HOME}/.openclaw/.env w,
+  deny @{HOME}/.openclaw/skills/*/SKILL.md w,
+  deny @{HOME}/.ssh/** w,
+  deny /root/** rw,
+  deny /etc/shadow r,
+
+  network,
+  dbus,
+  unix,
+  signal,
+}

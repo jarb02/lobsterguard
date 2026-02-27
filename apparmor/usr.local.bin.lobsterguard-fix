@@ -1,0 +1,75 @@
+# AppArmor profile for LobsterGuard fix_engine.py (restricted writer)
+# Allows writing ONLY to specific system config files for auto-fixes.
+# Blocks shell access, download tools, and package managers.
+
+#include <tunables/global>
+
+profile lobsterguard-fix /usr/local/bin/lobsterguard-fix {
+  #include <abstractions/base>
+  #include <abstractions/python>
+  #include <abstractions/nameservice>
+
+  /usr/local/bin/lobsterguard-fix r,
+  /usr/bin/python3* rix,
+  /usr/lib/python3/** r,
+  /usr/lib/python3*/** r,
+
+  owner @{HOME}/.openclaw/skills/lobsterguard/** r,
+  owner @{HOME}/.openclaw/skills/lobsterguard/data/ rw,
+  owner @{HOME}/.openclaw/skills/lobsterguard/data/** rw,
+
+  owner @{HOME}/.openclaw/config/** r,
+  owner @{HOME}/.openclaw/gateway/** r,
+  owner @{HOME}/.openclaw/.env r,
+
+  /etc/ssh/sshd_config rw,
+  /etc/ssh/sshd_config.d/** rw,
+  /etc/ufw/** rw,
+  /etc/fail2ban/** rw,
+  /etc/sysctl.conf rw,
+  /etc/sysctl.d/** rw,
+  /etc/audit/** rw,
+  /etc/security/limits.conf rw,
+  /etc/security/limits.d/** rw,
+  /etc/systemd/** rw,
+  /etc/cron.d/** rw,
+
+  deny /etc/passwd w,
+  deny /etc/shadow rw,
+  deny /etc/hosts w,
+  deny /etc/hostname w,
+  deny /etc/resolv.conf w,
+  deny /boot/** rw,
+  deny @{HOME}/.openclaw/skills/*/SKILL.md w,
+  deny @{HOME}/.openclaw/.env w,
+  deny @{HOME}/.ssh/** rw,
+
+  deny /usr/bin/bash x,
+  deny /usr/bin/sh x,
+  deny /bin/bash x,
+  deny /bin/sh x,
+  deny /usr/bin/wget x,
+  deny /usr/bin/curl x,
+  deny /usr/bin/pip* x,
+  deny /usr/bin/npm x,
+  deny /usr/bin/node x,
+
+  /usr/bin/systemctl rix,
+  /usr/sbin/ufw rix,
+  /usr/sbin/sysctl rix,
+  /usr/bin/tee rix,
+  /usr/bin/cp rix,
+  /usr/bin/mkdir rix,
+  /usr/bin/chmod rix,
+  /usr/bin/chown rix,
+  /usr/sbin/auditctl rix,
+  /usr/sbin/augenrules rix,
+
+  @{PROC}/ r,
+  @{PROC}/*/status r,
+  /tmp/ r,
+  owner /tmp/lg-* rw,
+
+  network inet stream,
+  network inet6 stream,
+}

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#  LobsterGuard Installer v6.0
+#  LobsterGuard Installer v6.1
 #  Security Auditor Skill for OpenClaw
 #  https://github.com/jarb02/lobsterguard
 # ============================================================
@@ -20,7 +20,7 @@ print_banner() {
     printf " | |_| (_) | |_) \\__ \\ ||  __/ |  | |_| | |_| | (_| | | | (_| |\n"
     printf " |____\\___/|_.__/|___/\\__\\___|_|   \\____|\\__,_|\\__,_|_|  \\__,_|\n"
     printf "\n"
-    printf "  Security Auditor for OpenClaw - v6.0${NC}\n\n"
+    printf "  Security Auditor for OpenClaw - v6.1${NC}\n\n"
 }
 
 log_ok()   { printf "  ${GREEN}✓${NC} %s\n" "$1"; }
@@ -216,6 +216,77 @@ setup_auto_cleanup() {
     fi
 }
 
+setup_apparmor() {
+    log_info "Configurando AppArmor sandboxing..."
+
+    # Install apparmor-utils if needed
+    if ! command -v aa-complain &>/dev/null; then
+        apt-get install -y -qq apparmor apparmor-utils > /dev/null 2>&1 || true
+    fi
+
+    if ! command -v apparmor_parser &>/dev/null; then
+        log_warn "AppArmor no disponible - omitiendo sandboxing"
+        return
+    fi
+
+    # Ensure AppArmor service is running
+    if ! systemctl is-active --quiet apparmor 2>/dev/null; then
+        systemctl enable apparmor 2>/dev/null || true
+        systemctl start apparmor 2>/dev/null || true
+    fi
+    log_ok "AppArmor activo"
+
+    # Create wrapper scripts for AppArmor profile attachment
+    cat > /usr/local/bin/lobsterguard-check << LGWRAP
+#!/bin/bash
+exec /usr/bin/python3 $SKILL_DIR/scripts/check.py "\$@"
+LGWRAP
+    chmod 755 /usr/local/bin/lobsterguard-check
+
+    cat > /usr/local/bin/lobsterguard-fix << LGWRAP
+#!/bin/bash
+exec /usr/bin/python3 $SKILL_DIR/scripts/fix_engine.py "\$@"
+LGWRAP
+    chmod 755 /usr/local/bin/lobsterguard-fix
+    log_ok "Wrappers creados en /usr/local/bin/"
+
+    # Install AppArmor profiles from apparmor/ directory
+    INST_DIR="$(cd "$(dirname "$0")" && pwd)"
+    if [ -d "$INST_DIR/apparmor" ]; then
+        for profile in "$INST_DIR/apparmor"/usr.local.bin.lobsterguard-*; do
+            [ -f "$profile" ] && cp "$profile" /etc/apparmor.d/
+        done
+    fi
+
+    # Fixup HOME path in profiles for the actual user
+    if [ "$OC_USER" != "root" ]; then
+        for pfile in /etc/apparmor.d/usr.local.bin.lobsterguard-*; do
+            [ -f "$pfile" ] || continue
+            sed -i "s|@{HOME}|/home/$OC_USER|g" "$pfile" 2>/dev/null || true
+        done
+    fi
+
+    # Load profiles in complain mode (safe first run)
+    for pfile in /etc/apparmor.d/usr.local.bin.lobsterguard-*; do
+        [ -f "$pfile" ] || continue
+        apparmor_parser -r "$pfile" 2>/dev/null || true
+        aa-complain "$pfile" 2>/dev/null || true
+    done
+    log_ok "Perfiles AppArmor cargados en modo COMPLAIN"
+    log_info "Activa enforce despues de 24h sin errores:"
+    log_info "  sudo aa-enforce /etc/apparmor.d/usr.local.bin.lobsterguard-check"
+    log_info "  sudo aa-enforce /etc/apparmor.d/usr.local.bin.lobsterguard-fix"
+
+    # Add apparmor commands to sudoers
+    if [ -f /etc/sudoers.d/lobsterguard ]; then
+        if ! grep -q apparmor_parser /etc/sudoers.d/lobsterguard 2>/dev/null; then
+            echo "# AppArmor management" >> /etc/sudoers.d/lobsterguard
+            echo "$OC_USER ALL=(ALL) NOPASSWD: /usr/bin/apparmor_parser, /sbin/apparmor_parser, /usr/sbin/apparmor_parser" >> /etc/sudoers.d/lobsterguard
+            echo "$OC_USER ALL=(ALL) NOPASSWD: /usr/sbin/aa-complain, /usr/sbin/aa-enforce, /usr/sbin/aa-disable, /usr/bin/aa-status, /usr/sbin/aa-status" >> /etc/sudoers.d/lobsterguard
+        fi
+    fi
+}
+
 verify_install() {
     log_info "Verificando instalacion..."
     ERRORS=0
@@ -290,6 +361,7 @@ main() {
     save_config
     setup_backup_dir
     setup_auto_cleanup
+    setup_apparmor
     printf "\n"
     verify_install || true
     printf "\n"
